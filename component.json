@@ -1,0 +1,10 @@
+{
+	"dependencies": {
+		"q": "0.9.7"
+	},
+
+	"devDependencies": {
+		"requirejs": "2.1.8",
+		"jquery": "2.0.3"
+	}
+}
