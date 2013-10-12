@@ -1,4 +1,4 @@
-define({
+var utils = {
 	convertToBase64: function(blob, cb) {
         var fr = new FileReader();
         fr.onload = function(e) {
@@ -30,4 +30,4 @@ define({
 
         return new Blob([uInt8Array], {type: contentType});
     }
-});
+};

@@ -1,0 +1,2 @@
+glob.LargeLocalStorage = LargeLocalStorage;
+})(this);

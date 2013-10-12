@@ -1,4 +1,4 @@
-define(['Q'], function(Q) {
+var FilesystemAPIProvider = (function(Q) {
 	function dirName(path) {
 		var i = path.lastIndexOf('/');
 		if (i !== -1) {
@@ -242,4 +242,4 @@ define(['Q'], function(Q) {
 			return deferred.promise;
 		}
 	}
-});
+})(Q);

@@ -1,4 +1,4 @@
-define(['Q', './utils'], function(Q, utils) {
+var IndexedDBProvider = (function(Q) {
 	var URL = window.URL || window.webkitURL;
 
 	var convertToBase64 = utils.convertToBase64;
@@ -226,4 +226,4 @@ define(['Q', './utils'], function(Q, utils) {
 			return deferred.promise;
 		}
 	}
-});
+})(Q);

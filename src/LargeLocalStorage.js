@@ -1,13 +1,4 @@
-define(['./impls/FilesystemAPIPRovider',
-		'./impls/IndexedDBProvider',
-		'./impls/WebSQLProvider',
-		'./impls/LocalStorageProvider',
-		'Q'],
-function(FilesystemAPIPRovider,
-		 IndexedDBProvider,
-		 WebSQLProvider,
-		 LocalStorageProvider,
-		 Q) {
+var LargeLocalStorage = (function(Q) {
 
 	var sessionMeta = localStorage.getItem('LargeLocalStorage-meta');
 	if (sessionMeta)
@@ -18,7 +9,7 @@ function(FilesystemAPIPRovider,
 	function getImpl(type) {
 		switch(type) {
 			case 'FileSystemAPI':
-				return FilesystemAPIPRovider.init();
+				return FilesystemAPIProvider.init();
 			case 'IndexedDB':
 				return IndexedDBProvider.init();
 			case 'WebSQL':
@@ -29,7 +20,7 @@ function(FilesystemAPIPRovider,
 	}
 
 	var providers = {
-		FileSystemAPI: FilesystemAPIPRovider,
+		FileSystemAPI: FilesystemAPIProvider,
 		IndexedDB: IndexedDBProvider,
 		WebSQL: WebSQLProvider,
 		LocalStorage: LocalStorageProvider
@@ -40,7 +31,7 @@ function(FilesystemAPIPRovider,
 			return providers[config.forceProvider].init(config);
 		}
 
-		return FilesystemAPIPRovider.init(config).then(function(impl) {
+		return FilesystemAPIProvider.init(config).then(function(impl) {
 			return Q(impl);
 		}, function() {
 			return IndexedDBProvider.init(config);
@@ -147,4 +138,4 @@ function(FilesystemAPIPRovider,
 	};
 
 	return LargeLocalStorageProvider;
-});
+})(Q);

@@ -5,23 +5,20 @@ module.exports = function (grunt) {
     require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
 
 	grunt.initConfig({
-		requirejs: {
-            compile: {
-                // Options: https://github.com/jrburke/r.js/blob/master/build/example.build.js
-                options: {
-                    paths: {
-                        Q: '../bower_components/q/q'
-                    },
-                    name: '../node_modules/almond/almond',
-
-                    baseUrl: 'src',
-                    optimize: 'none',
-                    out: 'dist/LargeLocalStorage.js',
-                    preserveLicenseComments: false,
-                    useStrict: true,
-                    wrap: true,
-                    //uglify2: {} // https://github.com/mishoo/UglifyJS2
-                }
+		concat: {
+            options: {
+                seperator: ';'
+            },
+            dist: {
+                src: ['src/header.js',
+                      'src/impls/utils.js',
+                      'src/impls/FilesystemAPIProvider.js',
+                      'src/impls/IndexedDBProvider.js',
+                      'src/impls/LocalStorageProvider.js',
+                      'src/impls/WebSQLProvider.js',
+                      'src/LargeLocalStorage.js',
+                      'src/footer.js'],
+                dest: 'dist/LargeLocalStorage.js'
             }
         }
     });

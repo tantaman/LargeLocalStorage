@@ -1,4 +1,4 @@
-define(['Q', './utils'], function(Q, utils) {
+var WebSQLProvider = (function(Q) {
 	var URL = window.URL || window.webkitURL;
 	var convertToBase64 = utils.convertToBase64;
 	var dataURLToBlob = utils.dataURLToBlob;
@@ -167,4 +167,4 @@ define(['Q', './utils'], function(Q, utils) {
 			return deferred.promise;
 		}
 	}
-});
+})(Q);

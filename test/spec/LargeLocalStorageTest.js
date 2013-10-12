@@ -1,5 +1,5 @@
-define(['LargeLocalStorage'],
-function(lls) {
+(function(lls) {
+	console.log('WTF?');
 	var storage = new lls({
 		size: 10 * 1024 * 1024
 		//forceProvider: 'WebSQL' // force a desired provider.
@@ -142,4 +142,4 @@ function(lls) {
 			storage.revokeAttachmentURL('');
 		});
 	});
-});
+})(LargeLocalStorage);

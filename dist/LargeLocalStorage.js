@@ -1,414 +1,829 @@
-(function () {
-/**
- * almond 0.2.6 Copyright (c) 2011-2012, The Dojo Foundation All Rights Reserved.
- * Available via the MIT or new BSD license.
- * see: http://github.com/jrburke/almond for details
- */
-//Going sloppy to avoid 'use strict' string cost, but strict practices should
-//be followed.
-/*jslint sloppy: true */
-/*global setTimeout: false */
+(function(glob) {
+	
+var utils = {
+	convertToBase64: function(blob, cb) {
+        var fr = new FileReader();
+        fr.onload = function(e) {
+            cb(e.target.result);
+        }
+        fr.readAsDataURL(blob);
+    },
 
-var requirejs, require, define;
-(function (undef) {
-    var main, req, makeMap, handlers,
-        defined = {},
-        waiting = {},
-        config = {},
-        defining = {},
-        hasOwn = Object.prototype.hasOwnProperty,
-        aps = [].slice;
+    dataURLToBlob: function(dataURL) {
+        var BASE64_MARKER = ';base64,';
+        if (dataURL.indexOf(BASE64_MARKER) == -1) {
+          var parts = dataURL.split(',');
+          var contentType = parts[0].split(':')[1];
+          var raw = parts[1];
 
-    function hasProp(obj, prop) {
-        return hasOwn.call(obj, prop);
+          return new Blob([raw], {type: contentType});
+        }
+
+        var parts = dataURL.split(BASE64_MARKER);
+        var contentType = parts[0].split(':')[1];
+        var raw = window.atob(parts[1]);
+        var rawLength = raw.length;
+
+        var uInt8Array = new Uint8Array(rawLength);
+
+        for (var i = 0; i < rawLength; ++i) {
+          uInt8Array[i] = raw.charCodeAt(i);
+        }
+
+        return new Blob([uInt8Array], {type: contentType});
     }
+};
+var FilesystemAPIProvider = (function(Q) {
+	function dirName(path) {
+		var i = path.lastIndexOf('/');
+		if (i !== -1) {
+			return path.substring(0, i);
+		} else {
+			return '';
+		}
+	}
 
-    /**
-     * Given a relative module name, like ./something, normalize it to
-     * a real name that can be mapped to a path.
-     * @param {String} name the relative name
-     * @param {String} baseName a real name that the name arg is relative
-     * to.
-     * @returns {String} normalized name
-     */
-    function normalize(name, baseName) {
-        var nameParts, nameSegment, mapValue, foundMap,
-            foundI, foundStarMap, starI, i, j, part,
-            baseParts = baseName && baseName.split("/"),
-            map = config.map,
-            starMap = (map && map['*']) || {};
+	  /**
+	  * Returns the base name of the path
+	  * e.g., baseName("path/to/some/file.txt") will return "file.txt"
+	  * baseName("path/to/some/file.txt", "txt") will return "file"
+	  * baseName("path/to/some/dir/") will return "dir"
+	  * @method baseName
+	  * @param {String} path the path
+	  * @param {String} [extension] extension to be stripped
+	  * @returns {String} base name
+	  */
+	function baseName(path, extension) {
+		var idx;
+		if (path[path.length - 1] === "/") {
+			path = path.substring(0, path.length - 1);
+		}
+		idx = path.lastIndexOf("/");
+		if (idx !== -1 && idx + 1 < path.length) {
+			path = path.substring(idx + 1, path.length);
+		}
+		if (extension != null) {
+			idx = path.lastIndexOf(extension);
+			if (idx + extension.length === path.length) {
+				path = path.substring(0, idx);
+			}
+		}
+		return path;
+	}
 
-        //Adjust any relative paths.
-        if (name && name.charAt(0) === ".") {
-            //If have a base name, try to normalize against it,
-            //otherwise, assume it is a top-level require that will
-            //be relative to baseUrl in the end.
-            if (baseName) {
-                //Convert baseName to array, and lop off the last part,
-                //so that . matches that "directory" and not name of the baseName's
-                //module. For instance, baseName of "one/two/three", maps to
-                //"one/two/three.js", but we want the directory, "one/two" for
-                //this normalization.
-                baseParts = baseParts.slice(0, baseParts.length - 1);
+	function FSAPI(fs) {
+		this._fs = fs;
+		this.type = "FilesystemAPI";
+	}
 
-                name = baseParts.concat(name.split("/"));
+	//
+	// myPres.strut
+	// myPres.strut-attachments/
+	//  -a1
+	//  -a2
+	// otherPres.strut
+	// otherPres.strut-attachments/
+	//  -a1
+	//  -a2...
 
-                //start trimDots
-                for (i = 0; i < name.length; i += 1) {
-                    part = name[i];
-                    if (part === ".") {
-                        name.splice(i, 1);
-                        i -= 1;
-                    } else if (part === "..") {
-                        if (i === 1 && (name[2] === '..' || name[0] === '..')) {
-                            //End of the line. Keep at least one non-dot
-                            //path segment at the front so it can be mapped
-                            //correctly to disk. Otherwise, there is likely
-                            //no path mapping for a path starting with '..'.
-                            //This can still fail, but catches the most reasonable
-                            //uses of ..
-                            break;
-                        } else if (i > 0) {
-                            name.splice(i - 1, 2);
-                            i -= 2;
-                        }
-                    }
-                }
-                //end trimDots
+	function makeErrorHandler(deferred, msg) {
+		// TODO: normalize the error so
+		// we can handle it upstream
+		return function(e) {
+			console.log(e);
+			console.log(msg);
+			deferred.reject(e);
+		}
+	}
 
-                name = name.join("/");
-            } else if (name.indexOf('./') === 0) {
-                // No baseName, so this is ID is resolved relative
-                // to baseUrl, pull off the leading dot.
-                name = name.substring(2);
-            }
-        }
+	function getAttachmentPath(path) {
+		var dir = dirName(path);
+		var attachmentsDir = dir + "-attachments";
+		return {
+			dir: attachmentsDir,
+			path: attachmentsDir + "/" + baseName(path)
+		};
+	}
 
-        //Apply map config if available.
-        if ((baseParts || starMap) && map) {
-            nameParts = name.split('/');
+	FSAPI.prototype = {
+		getContents: function(path) {
+			var deferred = Q.defer();
+			this._fs.root.getFile(path, {}, function(fileEntry) {
+				fileEntry.file(function(file) {
+					var reader = new FileReader();
 
-            for (i = nameParts.length; i > 0; i -= 1) {
-                nameSegment = nameParts.slice(0, i).join("/");
+					reader.onloadend = function(e) {
+						var data = e.target.result;
+						deferred.resolve(data);
+					};
 
-                if (baseParts) {
-                    //Find the longest baseName segment match in the config.
-                    //So, do joins on the biggest to smallest lengths of baseParts.
-                    for (j = baseParts.length; j > 0; j -= 1) {
-                        mapValue = map[baseParts.slice(0, j).join('/')];
+					reader.readAsText(file);
+				}, makeErrorHandler(deferred));
+			}, makeErrorHandler(deferred));
 
-                        //baseName segment has  config, find if it has one for
-                        //this name.
-                        if (mapValue) {
-                            mapValue = mapValue[nameSegment];
-                            if (mapValue) {
-                                //Match, update name to the new value.
-                                foundMap = mapValue;
-                                foundI = i;
-                                break;
-                            }
-                        }
-                    }
-                }
+			return deferred.promise;
+		},
 
-                if (foundMap) {
-                    break;
-                }
+		// create a file at path
+		// and write `data` to it
+		setContents: function(path, data) {
+			var deferred = Q.defer();
 
-                //Check for a star map match, but just hold on to it,
-                //if there is a shorter segment match later in a matching
-                //config, then favor over this star map.
-                if (!foundStarMap && starMap && starMap[nameSegment]) {
-                    foundStarMap = starMap[nameSegment];
-                    starI = i;
-                }
-            }
+			this._fs.root.getFile(path, {create:true}, function(fileEntry) {
+				fileEntry.createWriter(function(fileWriter) {
+					var blob;
+					fileWriter.onwriteend = function(e) {
+						fileWriter.onwriteend = function() {
+							deferred.resolve();
+						};
+						fileWriter.truncate(blob.size);
+					}
 
-            if (!foundMap && foundStarMap) {
-                foundMap = foundStarMap;
-                foundI = starI;
-            }
+					fileWriter.onerror = makeErrorHandler(deferred);
 
-            if (foundMap) {
-                nameParts.splice(0, foundI, foundMap);
-                name = nameParts.join('/');
-            }
-        }
+					if (data instanceof Blob) {
+						blob = data;
+					} else {
+						blob = new Blob([data], {type: 'text/plain'});
+					}
 
-        return name;
-    }
+					fileWriter.write(blob);
+				}, makeErrorHandler(deferred, "creating writer"));
+			}, makeErrorHandler(deferred, "getting file entry"));
 
-    function makeRequire(relName, forceSync) {
-        return function () {
-            //A version of a require function that passes a moduleName
-            //value for items that may need to
-            //look up paths relative to the moduleName
-            return req.apply(undef, aps.call(arguments, 0).concat([relName, forceSync]));
-        };
-    }
+			return deferred.promise;
+		},
 
-    function makeNormalize(relName) {
-        return function (name) {
-            return normalize(name, relName);
-        };
-    }
+		rm: function(path) {
+			var deferred = Q.defer();
+			var finalDeferred = Q.defer();
 
-    function makeLoad(depName) {
-        return function (value) {
-            defined[depName] = value;
-        };
-    }
+			// remove attachments that go along with the path
+			var attachmentsDir = path + "-attachments";
 
-    function callDep(name) {
-        if (hasProp(waiting, name)) {
-            var args = waiting[name];
-            delete waiting[name];
-            defining[name] = true;
-            main.apply(undef, args);
-        }
+			this._fs.root.getFile(path, {create:false},
+				function(entry) {
+					entry.remove(function() {
+						finalDeferred.resolve(deferred);
+					});
+				},
+				makeErrorHandler(finalDeferred, "getting file entry"));
 
-        if (!hasProp(defined, name) && !hasProp(defining, name)) {
-            throw new Error('No ' + name);
-        }
-        return defined[name];
-    }
+			this._fs.root.getDirectory(attachmentsDir, {},
+				function(entry) {
+					entry.removeRecursively(function() {
+						deferred.resolve();
+					});
+				},
+				function(err) {
+					if (err.code === FileError.NOT_FOUND_ERROR) {
+						deferred.resolve();
+					} else {
+						makeErrorHandler(deferred, "get attachment dir for rm " + attachmentsDir)(err);
+					}
+			});
 
-    //Turns a plugin!resource to [plugin, resource]
-    //with the plugin being undefined if the name
-    //did not have a plugin prefix.
-    function splitPrefix(name) {
-        var prefix,
-            index = name ? name.indexOf('!') : -1;
-        if (index > -1) {
-            prefix = name.substring(0, index);
-            name = name.substring(index + 1, name.length);
-        }
-        return [prefix, name];
-    }
+			return finalDeferred.promise;
+		},
 
-    /**
-     * Makes a name map, normalizing the name, and using a plugin
-     * for normalization if necessary. Grabs a ref to plugin
-     * too, as an optimization.
-     */
-    makeMap = function (name, relName) {
-        var plugin,
-            parts = splitPrefix(name),
-            prefix = parts[0];
+		getAttachment: function(path) {
+			var attachmentPath = getAttachmentPath(path).path;
 
-        name = parts[1];
+			var deferred = Q.defer();
+			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
+				fileEntry.file(function(file) {
+					deferred.resolve(file);
+				}, makeErrorHandler(deferred, "getting attachment file"));
+			}, makeErrorHandler(deferred, "getting attachment file entry"));
 
-        if (prefix) {
-            prefix = normalize(prefix, relName);
-            plugin = callDep(prefix);
-        }
+			return deferred.promise;
+		},
 
-        //Normalize according
-        if (prefix) {
-            if (plugin && plugin.normalize) {
-                name = plugin.normalize(name, makeNormalize(relName));
-            } else {
-                name = normalize(name, relName);
-            }
-        } else {
-            name = normalize(name, relName);
-            parts = splitPrefix(name);
-            prefix = parts[0];
-            name = parts[1];
-            if (prefix) {
-                plugin = callDep(prefix);
-            }
-        }
+		getAttachmentURL: function(path) {
+			var attachmentPath = getAttachmentPath(path).path;
 
-        //Using ridiculous property names for space reasons
-        return {
-            f: prefix ? prefix + '!' + name : name, //fullName
-            n: name,
-            pr: prefix,
-            p: plugin
-        };
-    };
+			var deferred = Q.defer();
+			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
+				deferred.resolve(fileEntry.toURL());
+			}, makeErrorHandler(deferred, "getting attachment file entry"));
 
-    function makeConfig(name) {
-        return function () {
-            return (config && config.config && config.config[name]) || {};
-        };
-    }
+			return deferred.promise;
+		},
 
-    handlers = {
-        require: function (name) {
-            return makeRequire(name);
-        },
-        exports: function (name) {
-            var e = defined[name];
-            if (typeof e !== 'undefined') {
-                return e;
-            } else {
-                return (defined[name] = {});
-            }
-        },
-        module: function (name) {
-            return {
-                id: name,
-                uri: '',
-                exports: defined[name],
-                config: makeConfig(name)
-            };
-        }
-    };
+		revokeAttachmentURL: function(url) {
+			// we return FS urls so this is a no-op
+			// unless someone is being silly and doing
+			// createObjectURL(getAttachment()) ......
+		},
 
-    main = function (name, deps, callback, relName) {
-        var cjsModule, depName, ret, map, i,
-            args = [],
-            usingExports;
+		// Create a folder at dirname(path)+"-attachments"
+		// add attachment under that folder as basename(path)
+		setAttachment: function(path, data) {
+			var attachInfo = getAttachmentPath(path);
 
-        //Use name if no relName
-        relName = relName || name;
+			var deferred = Q.defer();
 
-        //Call the callback to define the module, if necessary.
-        if (typeof callback === 'function') {
+			var self = this;
+			this._fs.root.getDirectory(attachInfo.dir, {create:true}, function(dirEntry) {
+				deferred.resolve(self.setContents(attachInfo.path, data));
+			}, makeErrorHandler(deferred, "getting attachment dir"));
 
-            //Pull out the defined dependencies and pass the ordered
-            //values to the callback.
-            //Default to [require, exports, module] if no deps
-            deps = !deps.length && callback.length ? ['require', 'exports', 'module'] : deps;
-            for (i = 0; i < deps.length; i += 1) {
-                map = makeMap(deps[i], relName);
-                depName = map.f;
+			return deferred.promise;
+		},
 
-                //Fast path CommonJS standard dependencies.
-                if (depName === "require") {
-                    args[i] = handlers.require(name);
-                } else if (depName === "exports") {
-                    //CommonJS module spec 1.1
-                    args[i] = handlers.exports(name);
-                    usingExports = true;
-                } else if (depName === "module") {
-                    //CommonJS module spec 1.1
-                    cjsModule = args[i] = handlers.module(name);
-                } else if (hasProp(defined, depName) ||
-                           hasProp(waiting, depName) ||
-                           hasProp(defining, depName)) {
-                    args[i] = callDep(depName);
-                } else if (map.p) {
-                    map.p.load(map.n, makeRequire(relName, true), makeLoad(depName), {});
-                    args[i] = defined[depName];
-                } else {
-                    throw new Error(name + ' missing ' + depName);
-                }
-            }
+		// rm the thing at dirname(path)+"-attachments/"+basename(path)
+		rmAttachment: function(path) {
+			var attachmentPath = getAttachmentPath(path).path;
 
-            ret = callback.apply(defined[name], args);
+			var deferred = Q.defer();
+			this._fs.root.getFile(attachmentPath, {create:false},
+				function(entry) {
+					entry.remove(function() {
+						deferred.resolve();
+					}, makeErrorHandler(deferred, "removing attachment"));
+			}, makeErrorHandler(deferred, "getting attachment file entry for rm"));
 
-            if (name) {
-                //If setting exports via "module" is in play,
-                //favor that over return value and exports. After that,
-                //favor a non-undefined return value over exports use.
-                if (cjsModule && cjsModule.exports !== undef &&
-                        cjsModule.exports !== defined[name]) {
-                    defined[name] = cjsModule.exports;
-                } else if (ret !== undef || !usingExports) {
-                    //Use the return value from the function.
-                    defined[name] = ret;
-                }
-            }
-        } else if (name) {
-            //May just be an object definition for the module. Only
-            //worry about defining if have a module name.
-            defined[name] = callback;
-        }
-    };
+			return deferred.promise;
+		}
+	};
 
-    requirejs = require = req = function (deps, callback, relName, forceSync, alt) {
-        if (typeof deps === "string") {
-            if (handlers[deps]) {
-                //callback in this case is really relName
-                return handlers[deps](callback);
-            }
-            //Just return the module wanted. In this scenario, the
-            //deps arg is the module name, and second arg (if passed)
-            //is just the relName.
-            //Normalize module name, if it contains . or ..
-            return callDep(makeMap(deps, callback).f);
-        } else if (!deps.splice) {
-            //deps is a config object, not an array.
-            config = deps;
-            if (callback.splice) {
-                //callback is an array, which means it is a dependency list.
-                //Adjust args if there are dependencies
-                deps = callback;
-                callback = relName;
-                relName = null;
-            } else {
-                deps = undef;
-            }
-        }
+	return {
+		init: function(config) {
+			var deferred = Q.defer();
+			window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
+			var persistentStorage = navigator.persistentStorage || navigator.webkitPersistentStorage;
 
-        //Support require(['a'])
-        callback = callback || function () {};
+			if (!requestFileSystem) {
+				deferred.reject("No FS API");
+				return deferred.promise;
+			}
 
-        //If relName is a function, it is an errback handler,
-        //so remove it.
-        if (typeof relName === 'function') {
-            relName = forceSync;
-            forceSync = alt;
-        }
+			persistentStorage.requestQuota(config.size,
+			function(numBytes) {
+				requestFileSystem(window.PERSISTENT, numBytes,
+				function(fs) {
+					deferred.resolve(new FSAPI(fs));
+				}, function(err) {
+					// TODO: implement various error messages.
+					console.log(err);
+					deferred.reject(err);
+				});
+			}, function(err) {
+				// TODO: implement various error messages.
+				console.log(err);
+				deferred.reject(err);
+			});
 
-        //Simulate async callback;
-        if (forceSync) {
-            main(undef, deps, callback, relName);
-        } else {
-            //Using a non-zero value because of concern for what old browsers
-            //do, and latest browsers "upgrade" to 4 if lower value is used:
-            //http://www.whatwg.org/specs/web-apps/current-work/multipage/timers.html#dom-windowtimers-settimeout:
-            //If want a value immediately, use require('id') instead -- something
-            //that works in almond on the global level, but not guaranteed and
-            //unlikely to work in other AMD implementations.
-            setTimeout(function () {
-                main(undef, deps, callback, relName);
-            }, 4);
-        }
+			return deferred.promise;
+		}
+	}
+})(Q);
+var IndexedDBProvider = (function(Q) {
+	var URL = window.URL || window.webkitURL;
 
-        return req;
-    };
+	var convertToBase64 = utils.convertToBase64;
+	var dataURLToBlob = utils.dataURLToBlob;
 
-    /**
-     * Just drops the config on the floor, but returns req in case
-     * the config return value is used.
-     */
-    req.config = function (cfg) {
-        config = cfg;
-        if (config.deps) {
-            req(config.deps, config.callback);
-        }
-        return req;
-    };
+	function IDB(db) {
+		this._db = db;
+		this.type = 'IndexedDB';
 
-    /**
-     * Expose module registry for debugging and tooling
-     */
-    requirejs._defined = defined;
+		var transaction = this._db.transaction(['attachments'], 'readwrite');
+		this._supportsBlobs = true;
+		try {
+			transaction.objectStore('attachments')
+			.put(Blob(["sdf"], {type: "text/plain"}), "featurecheck");
+		} catch (e) {
+			this._supportsBlobs = false;
+		}
+	}
 
-    define = function (name, deps, callback) {
+	// TODO: normalize returns and errors.
+	IDB.prototype = {
+		getContents: function(path) {
+			var deferred = Q.defer();
+			var transaction = this._db.transaction(['files'], 'readonly');
 
-        //This module may not have dependencies
-        if (!deps.splice) {
-            //deps is not an array, so probably means
-            //an object literal or factory function for
-            //the value. Adjust args.
-            callback = deps;
-            deps = [];
-        }
+			var get = transaction.objectStore('files').get(path);
+			get.onsuccess = function(e) {
+				deferred.resolve(e.target.result);
+			};
 
-        if (!hasProp(defined, name) && !hasProp(waiting, name)) {
-            waiting[name] = [name, deps, callback];
-        }
-    };
+			get.onerror = function(e) {
+				deferred.reject(e);
+			};
 
-    define.amd = {
-        jQuery: true
-    };
-}());
+			return deferred.promise;
+		},
 
-define("../node_modules/almond/almond", function(){});
-}());
+		setContents: function(path, data) {
+			var deferred = Q.defer();
+			var transaction = this._db.transaction(['files'], 'readwrite');
+
+			var put = transaction.objectStore('files').put(data, path);
+			put.onsuccess = function(e) {
+				deferred.resolve(e);
+			};
+
+			put.onerror = function(e) {
+				deferred.reject(e);
+			};
+
+			return deferred.promise;
+		},
+
+		rm: function(path) {
+			var deferred = Q.defer();
+			var finalDeferred = Q.defer();
+
+			var transaction = this._db.transaction(['files', 'attachments'], 'readwrite');
+			
+			var del = transaction.objectStore('files').delete(path);
+			var openCur = transaction.objectStore('attachments').openCursor();
+
+			del.onsuccess = function(e) {
+				finalDeferred.resolve(deferred);
+			};
+
+			del.onerror = function(e) {
+				finalDeferred.reject();
+			};
+
+			openCur.onsuccess = function(e) {
+				var cursor = e.target.result;
+				if (cursor) {
+					// check if the item has the key we are interested in
+					if (cursor.primaryKey.indexOf(path) == 0)
+						cursor.delete();
+					cursor.continue();
+				} else {
+					deferred.resolve();
+				}
+			};
+
+			openCur.onerror = function(e) {
+				deferred.reject(e);
+			};
+
+			return finalDeferred.promise;
+		},
+
+		getAttachment: function(path) {
+			var deferred = Q.defer();
+
+			var transaction = this._db.transaction(['attachments'], 'readonly');
+			var get = transaction.objectStore('attachments').get(path);
+
+			var self = this;
+			get.onsuccess = function(e) {
+				var data = e.target.result;
+				if (!self._supportsBlobs) {
+					data = dataURLToBlob(data);
+				}
+				deferred.resolve(data);
+			};
+
+			get.onerror = function(e) {
+				deferred.resolve(e);
+			};
+
+			return deferred.promise;
+		},
+
+		getAttachmentURL: function(path) {
+			var deferred = Q.defer();
+			this.getAttachment(path).then(function(attachment) {
+				deferred.resolve(URL.createObjectURL(attachment));
+			}, function(e) {
+				deferred.reject(e);
+			});
+
+			return deferred.promise;
+		},
+
+		revokeAttachmentURL: function(url) {
+			URL.revokeObjectURL(url);
+		},
+
+		setAttachment: function(path, data) {
+			var deferred = Q.defer();
+
+			if (data instanceof Blob && !this._supportsBlobs) {
+				var self = this;
+				convertToBase64(data, function(data) {
+					continuation.call(self, data);
+				});
+			} else {
+				continuation.call(this, data);
+			}
+
+			function continuation(data) {
+				var transaction = this._db.transaction(['attachments'], 'readwrite');
+				var put = transaction.objectStore('attachments').put(data, path);
+
+				put.onsuccess = function(e) {
+					deferred.resolve(e);
+				};
+
+				put.onerror = function(e) {
+					deferred.reject(e);
+				};
+			}
+
+			return deferred.promise;
+		},
+
+		rmAttachment: function(path) {
+			var deferred = Q.defer();
+			var transaction = this._db.transaction(['attachments'], 'readwrite');
+			var del = transaction.objectStore('attachments').delete(path);
+
+			del.onsuccess = function(e) {
+				deferred.resolve(e);
+			};
+
+			del.onerror = function(e) {
+				deferred.reject(e);
+			};
+
+			return deferred.promise;
+		}
+	};
+
+	return {
+		init: function() {
+			var deferred = Q.defer();
+
+			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
+			IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction,
+			dbVersion = 1.0;
+
+			if (!indexedDB || !IDBTransaction) {
+				deferred.reject("No IndexedDB");
+				return deferred.promise;
+			}
+
+			var request = indexedDB.open("largelocalstorage", dbVersion);
+
+			function createObjectStore(db) {
+				db.createObjectStore("files");
+				db.createObjectStore("attachments");
+			}
+
+			// TODO: normalize errors
+			request.onerror = function (event) {
+				deferred.reject(event);
+			};
+		 
+			request.onsuccess = function (event) {
+				var db = request.result;
+		 
+				db.onerror = function (event) {
+					console.log(event);
+				};
+				
+				// Chrome workaround
+				if (db.setVersion) {
+					if (db.version != dbVersion) {
+						var setVersion = db.setVersion(dbVersion);
+						setVersion.onsuccess = function () {
+							createObjectStore(db);
+							deferred.resolve();
+						};
+					}
+					else {
+						deferred.resolve(new IDB(db));
+					}
+				} else {
+					deferred.resolve(new IDB(db));
+				}
+			}
+			
+			request.onupgradeneeded = function (event) {
+				createObjectStore(event.target.result);
+			};
+
+			return deferred.promise;
+		}
+	}
+})(Q);
+var LocalStorageProvider = (function(Q) {
+	return {
+		init: function() {
+			return Q({type: 'LocalStorage'});
+		}
+	}
+})(Q);
+var WebSQLProvider = (function(Q) {
+	var URL = window.URL || window.webkitURL;
+	var convertToBase64 = utils.convertToBase64;
+	var dataURLToBlob = utils.dataURLToBlob;
+
+	function WSQL(db) {
+		this._db = db;
+	}
+
+	WSQL.prototype = {
+		getContents: function(path) {
+			var deferred = Q.defer();
+			this._db.transaction(function(tx) {
+				tx.executeSql('SELECT value FROM files WHERE fname = ?', [path],
+				function(tx, res) {
+					if (res.rows.length == 0) {
+						deferred.reject({code: 1});
+					} else {
+						deferred.resolve(res.rows.item(0).value);
+					}
+				});
+			}, function(err) {
+				console.log(err);
+				deferred.reject(err);
+			});
+
+			return deferred.promise;
+		},
+
+		setContents: function(path, data) {
+			var deferred = Q.defer();
+			this._db.transaction(function(tx) {
+				tx.executeSql(
+				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [path, data]);
+			}, function(err) {
+				console.log(err);
+				deferred.reject(err);
+			}, function() {
+				deferred.resolve();
+			});
+
+			return deferred.promise;
+		},
+
+		rm: function(path) {
+			var deferred = Q.defer();
+			this._db.transaction(function(tx) {
+				tx.executeSql('DELETE FROM files WHERE fname = ?', [path]);
+				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [path]);
+			}, function(err) {
+				console.log(err);
+				deferred.reject(err);
+			}, function() {
+				deferred.resolve();
+			});
+
+			return deferred.promise;
+		},
+
+		getAttachment: function(path) {
+			var parts = path.split('/');
+			var fname = parts[0];
+			var akey = parts[1];
+			var deferred = Q.defer();
+
+			this._db.transaction(function(tx){ 
+				tx.executeSql('SELECT value FROM attachments WHERE fname = ? AND akey = ?',
+				[fname, akey],
+				function(tx, res) {
+					if (res.rows.length == 0) {
+						deferred.reject({code: 1});
+					} else {
+						deferred.resolve(dataURLToBlob(res.rows.item(0).value));
+					}
+				});
+			}, function(err) {
+				console.log(err);
+				deferred.reject();
+			});
+
+			return deferred.promise;
+		},
+
+		getAttachmentURL: function(path) {
+			var deferred = Q.defer();
+			this.getAttachment(path).then(function(blob) {
+				deferred.resolve(URL.createObjectURL(blob));
+			}, function() {
+				deferred.reject();
+			});
+
+			return deferred.promise;
+		},
+
+		revokeAttachmentURL: function(url) {
+			URL.revokeObjectURL(url);
+		},
+
+		setAttachment: function(path, data) {
+			var parts = path.split('/');
+			var fname = parts[0];
+			var akey = parts[1];
+			var deferred = Q.defer();
+
+			var self = this;
+			convertToBase64(data, function(data) {
+				self._db.transaction(function(tx) {
+					tx.executeSql(
+					'INSERT OR REPLACE INTO attachments (fname, akey, value) VALUES(?, ?, ?)',
+					[fname, akey, data]);
+				}, function(err) {
+					deferred.reject(err);
+				}, function() {
+					console.log("SET ATTACH");
+					console.log(arguments);
+					console.log("END SET ATTACH");
+					deferred.resolve();
+				});
+			});
+
+			return deferred.promise;
+		},
+
+		rmAttachment: function(path) {
+			var parts = path.split('/');
+			var fname = parts[0];
+			var akey = parts[1];
+			var deferred = Q.defer();
+			this._db.transaction(function(tx) {
+				tx.executeSql('DELETE FROM attachments WHERE fname = ? AND akey = ?',
+				[fname, akey]);
+			}, function(err) {
+				deferred.reject(err);
+			}, function() {
+				console.log("DEL ATTACH");
+				console.log(arguments);
+				console.log("END DEL ATTACH");
+				deferred.resolve();
+			});
+
+			return deferred.promise;
+		}
+	};
+
+	return {
+		init: function(config) {
+			var openDb = window.openDatabase;
+			var deferred = Q.defer();
+			if (!openDb) {
+				deferred.reject("No WebSQL");
+				return deferred.promise;
+			}
+
+			var db = openDb('largelocalstorage', '1.0', 'large local storage', config.size);
+
+			db.transaction(function(tx) {
+				tx.executeSql('CREATE TABLE IF NOT EXISTS files (fname unique, value)');
+				tx.executeSql('CREATE TABLE IF NOT EXISTS attachments (fname, akey, value)');
+				tx.executeSql('CREATE INDEX IF NOT EXISTS fname_index ON attachments (fname)');
+				tx.executeSql('CREATE INDEX IF NOT EXISTS akey_index ON attachments (akey)');
+			}, function(err) {
+				deferred.reject(err);
+			}, function() {
+				deferred.resolve(new WSQL(db));
+			});
+
+			return deferred.promise;
+		}
+	}
+})(Q);
+var LargeLocalStorage = (function(Q) {
+
+	var sessionMeta = localStorage.getItem('LargeLocalStorage-meta');
+	if (sessionMeta)
+		sessionMeta = JSON.parse(sessionMeta);
+	else
+		sessionMeta = {};
+
+	function getImpl(type) {
+		switch(type) {
+			case 'FileSystemAPI':
+				return FilesystemAPIProvider.init();
+			case 'IndexedDB':
+				return IndexedDBProvider.init();
+			case 'WebSQL':
+				return WebSQLProvider.init();
+			case 'LocalStorage':
+				return LocalStorageProvider.init();
+		}
+	}
+
+	var providers = {
+		FileSystemAPI: FilesystemAPIProvider,
+		IndexedDB: IndexedDBProvider,
+		WebSQL: WebSQLProvider,
+		LocalStorage: LocalStorageProvider
+	}
+
+	function selectImplementation(config) {
+		if (config.forceProvider) {
+			return providers[config.forceProvider].init(config);
+		}
+
+		return FilesystemAPIProvider.init(config).then(function(impl) {
+			return Q(impl);
+		}, function() {
+			return IndexedDBProvider.init(config);
+		}).then(function(impl) {
+			return Q(impl);
+		}, function() {
+			return WebSQLProvider.init(config);
+		}).then(function(impl) {
+			return Q(impl);
+		}, function() {
+			return LocalStorageProvider.init(config);
+		});
+	}
+
+	function copyOldData(from, to) {
+		from = getImpl(from);
+	}
+
+	function LargeLocalStorageProvider(config) {
+		var self = this;
+		var deferred = Q.defer();
+		selectImplementation(config).then(function(impl) {
+			console.log('Selected: ' + impl.type);
+			self._impl = impl;
+			if (sessionMeta.lastStorageImpl != self._impl.type) {
+				copyOldData(sessionMeta.lastStorageImpl, self._impl);
+			}
+			sessionMeta.lastStorageImpl = impl.type;
+			deferred.resolve(self);
+		}).catch(function(e) {
+			// This should be impossible
+			console.log(e);
+			deferred.reject('No storage provider found');
+		});
+
+		this.initialized = deferred.promise;
+	}
+
+	LargeLocalStorageProvider.prototype = {
+		supportsAttachments: function() {
+			this._checkAvailability();
+			return this._impl.supportsAttachments();
+		},
+
+		ready: function() {
+			return true;
+		},
+
+		ls: function(path) {
+			this._checkAvailability();
+			return this._impl.ls(path);
+		},
+
+		rm: function(path) {
+			// check for attachments on this path
+			// delete attachments in the storage as well.
+			this._checkAvailability();
+			return this._impl.rm(path);
+		},
+
+		getContents: function(path) {
+			this._checkAvailability();
+			return this._impl.getContents(path);
+		},
+
+		setContents: function(path, data) {
+			this._checkAvailability();
+			return this._impl.setContents(path, data);
+		},
+
+		getAttachment: function(path) {
+			this._checkAvailability();
+			return this._impl.getAttachment(path);
+		},
+
+		getAttachmentURL: function(path) {
+			this._checkAvailability();
+			return this._impl.getAttachmentURL(path);
+		},
+
+		revokeAttachmentURL: function(url) {
+			this._checkAvailability();
+			return this._impl.revokeAttachmentURL(url);
+		},
+
+		setAttachment: function(path, data) {
+			this._checkAvailability();
+			return this._impl.setAttachment(path, data);
+		},
+
+		rmAttachment: function(path) {
+			this._checkAvailability();
+			return this._impl.rmAttachment(path);
+		},
+
+		_checkAvailability: function() {
+			if (!this._impl) {
+				throw {
+					msg: "No storage implementation is available yet.  The user most likely has not granted you app access to FileSystemAPI or IndexedDB",
+					code: "NO_IMPLEMENTATION"
+				};
+			}
+		}
+	};
+
+	return LargeLocalStorageProvider;
+})(Q);
+glob.LargeLocalStorage = LargeLocalStorage;
+})(this);

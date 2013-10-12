@@ -32,9 +32,7 @@
   "devDependencies": {
     "grunt": "~0.4.1",
     "grunt-contrib-requirejs": "~0.4.1",
-    "matchdep": "~0.3.0"
-  },
-  "dependencies": {
-    "almond": "~0.2.6"
+    "matchdep": "~0.3.0",
+    "grunt-contrib-concat": "~0.3.0"
   }
 }
