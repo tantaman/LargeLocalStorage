@@ -127,6 +127,14 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.rmAttachment(path);
 		},
 
+		getCapacity: function() {
+			this._checkAvailability();
+			if (this._impl.getCapacity)
+				return this._impl.getCapacity();
+			else
+				return -1;
+		},
+
 		_checkAvailability: function() {
 			if (!this._impl) {
 				throw {

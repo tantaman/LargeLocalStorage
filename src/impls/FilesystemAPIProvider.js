@@ -36,11 +36,6 @@ var FilesystemAPIProvider = (function(Q) {
 		return path;
 	}
 
-	function FSAPI(fs) {
-		this._fs = fs;
-		this.type = "FilesystemAPI";
-	}
-
 	//
 	// myPres.strut
 	// myPres.strut-attachments/
@@ -68,6 +63,12 @@ var FilesystemAPIProvider = (function(Q) {
 			dir: attachmentsDir,
 			path: attachmentsDir + "/" + baseName(path)
 		};
+	}
+
+	function FSAPI(fs, numBytes) {
+		this._fs = fs;
+		this._capacity = numBytes;
+		this.type = "FilesystemAPI";
 	}
 
 	FSAPI.prototype = {
@@ -209,6 +210,10 @@ var FilesystemAPIProvider = (function(Q) {
 			}, makeErrorHandler(deferred, "getting attachment file entry for rm"));
 
 			return deferred.promise;
+		},
+
+		getCapacity: function() {
+			return this._capacity;
 		}
 	};
 
@@ -227,7 +232,7 @@ var FilesystemAPIProvider = (function(Q) {
 			function(numBytes) {
 				requestFileSystem(window.PERSISTENT, numBytes,
 				function(fs) {
-					deferred.resolve(new FSAPI(fs));
+					deferred.resolve(new FSAPI(fs, numBytes));
 				}, function(err) {
 					// TODO: implement various error messages.
 					console.log(err);
