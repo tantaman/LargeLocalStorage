@@ -1,4 +1,5 @@
 {
+  "name": "LargeLocalStorage",
 	"dependencies": {
 		"q": "0.9.7"
 	},

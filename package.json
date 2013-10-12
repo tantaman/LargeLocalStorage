@@ -1,0 +1,40 @@
+{
+  "name": "LargeLocalStorage",
+  "version": "0.1.0",
+  "description": "Storage large files and blob in a cross platform way, in the browser",
+  "main": "Gruntfile.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/tantaman/LargeLocalStorage.git"
+  },
+  "keywords": [
+    "LocalStorage",
+    "key",
+    "value",
+    "key-value",
+    "storage",
+    "browser",
+    "indexeddb",
+    "websql",
+    "filesystemapi"
+  ],
+  "author": "Matt Crinklaw-Vogt",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/tantaman/LargeLocalStorage/issues"
+  },
+  "devDependencies": {
+    "grunt": "~0.4.1",
+    "grunt-contrib-requirejs": "~0.4.1",
+    "matchdep": "~0.3.0"
+  },
+  "dependencies": {
+    "almond": "~0.2.6"
+  }
+}
