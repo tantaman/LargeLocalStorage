@@ -1,10 +1,14 @@
 var utils = {
 	convertToBase64: function(blob, cb) {
-        var fr = new FileReader();
-        fr.onload = function(e) {
-            cb(e.target.result);
-        }
-        fr.readAsDataURL(blob);
+      var fr = new FileReader();
+      fr.onload = function(e) {
+          cb(e.target.result);
+      }
+      fr.onerror = function(e) {
+      };
+      fr.onabort = function(e) {
+      };
+      fr.readAsDataURL(blob);
     },
 
     dataURLToBlob: function(dataURL) {

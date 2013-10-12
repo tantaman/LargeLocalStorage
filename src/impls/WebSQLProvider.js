@@ -20,7 +20,6 @@ var WebSQLProvider = (function(Q) {
 					}
 				});
 			}, function(err) {
-				console.log(err);
 				deferred.reject(err);
 			});
 
@@ -33,7 +32,6 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql(
 				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [path, data]);
 			}, function(err) {
-				console.log(err);
 				deferred.reject(err);
 			}, function() {
 				deferred.resolve();
@@ -48,7 +46,6 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql('DELETE FROM files WHERE fname = ?', [path]);
 				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [path]);
 			}, function(err) {
-				console.log(err);
 				deferred.reject(err);
 			}, function() {
 				deferred.resolve();
@@ -74,8 +71,7 @@ var WebSQLProvider = (function(Q) {
 					}
 				});
 			}, function(err) {
-				console.log(err);
-				deferred.reject();
+				deferred.reject(err);
 			});
 
 			return deferred.promise;
@@ -111,9 +107,6 @@ var WebSQLProvider = (function(Q) {
 				}, function(err) {
 					deferred.reject(err);
 				}, function() {
-					console.log("SET ATTACH");
-					console.log(arguments);
-					console.log("END SET ATTACH");
 					deferred.resolve();
 				});
 			});
@@ -132,9 +125,6 @@ var WebSQLProvider = (function(Q) {
 			}, function(err) {
 				deferred.reject(err);
 			}, function() {
-				console.log("DEL ATTACH");
-				console.log(arguments);
-				console.log("END DEL ATTACH");
 				deferred.resolve();
 			});
 

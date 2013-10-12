@@ -1,12 +1,10 @@
 (function(lls) {
-	console.log('WTF?');
 	var storage = new lls({
 		size: 10 * 1024 * 1024
 		//forceProvider: 'WebSQL' // force a desired provider.
 	});
 
 	function fail(err) {
-		console.log(err);
 		expect(false).to.equal(true);
 	}
 
@@ -105,7 +103,7 @@
 				expect(typeof url === 'string').to.equal(true);
 				$(document.body).append('<img src="' + url + '">');
 				done();
-			}).catch(function() {
+			}).catch(function(err) {
 				fail(err);
 				done();
 			});
@@ -114,7 +112,7 @@
 		it('Allows attachments to be deleted', function(done) {
 			storage.rmAttachment("testfile4/ele").then(function() {
 				done();
-			}).catch(function() {
+			}).catch(function(err) {
 				fail(err);
 				done();
 			});

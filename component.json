@@ -1,10 +1,7 @@
 {
   "name": "LargeLocalStorage",
-	"dependencies": {
-		"q": "0.9.7"
-	},
-
 	"devDependencies": {
-		"jquery": "2.0.3"
+		"jquery": "2.0.3",
+		"q": "0.9.7"
 	}
 }
