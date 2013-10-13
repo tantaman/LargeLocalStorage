@@ -19,17 +19,29 @@ var FilesystemAPIProvider = (function(Q) {
 		};
 	}
 
-	function readDirEntries(reader, deferred, result) {
+	function readDirEntries(reader, result) {
+		var deferred = Q.defer();
+
+		_readDirEntries(reader, result, deferred);
+
+		return deferred.promise;
+	}
+
+	function _readDirEntries(reader, result, deferred) {
 		reader.readEntries(function(entries) {
-			if (entries.length == 0)
+			if (entries.length == 0) {
 				deferred.resolve(result);
-			else {
+			} else {
 				result = result.concat(entries);
-				readDirEntries(reader, deferred, result);
+				_readDirEntries(reader, result, deferred);
 			}
 		}, function(err) {
 			deferred.reject(err);
 		});
+	}
+
+	function entryToFile(entry, cb, eb) {
+		entry.file(cb, eb);
 	}
 
 	function FSAPI(fs, numBytes) {
@@ -153,7 +165,8 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
 				var reader = entry.createReader();
-				readDirEntries(reader, deferred, []);
+				deferred.resolve(
+					utils.mapAsync(entryToFile, readDirEntries(reader, [])));
 			}, function(err) {
 				deferred.reject(err);
 			});

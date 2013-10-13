@@ -5,6 +5,7 @@
 	});
 
 	function fail(err) {
+		console.log(err);
 		expect(false).to.equal(true);
 	}
 
@@ -144,10 +145,15 @@
 			storage.getAllAttachments('album').then(function() {
 				console.log(arguments);
 				done();
-			}, function() {
-				console.log(arguments);
+			}, function(e) {
+				fail(e);
 				done();
 			})
+		});
+
+		it('Allows all attachment urls to be gotten in one shot', function(done) {
+			
+			done();
 		});
 	});
 })(LargeLocalStorage);
