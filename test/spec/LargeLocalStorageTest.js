@@ -6,7 +6,7 @@
 
 	function fail(err) {
 		console.log(err);
-		expect(false).to.equal(true);
+		throw Error("fail.");
 	}
 
 	function getAttachment(a, cb) {
@@ -124,15 +124,24 @@
 				storage.setContents("testfile5", "fileo").then(function() {
 					return storage.setAttachment("testfile5/pie", blob);
 				}).then(function() {
+					return storage.setAttachment("testfile5/pie2", blob);
+				}).then(function() {
 					return storage.rm("testfile5");
 				}).then(function() {
 					return storage.getAttachment("testfile5/pie");
 				}).then(function() {
-					fail(err);
+					fail();
 					done();
 				}).catch(function(err) {
 					expect(err != null).to.equal(true);
-					done();
+					storage.getAttachment("testfile5/pie2")
+					.then(function(a) {
+						fail(a);
+						done();
+					}, function(err) {
+						expect(err != null).to.equal(true);
+						done();
+					});
 				});
 			});
 		});
@@ -152,7 +161,6 @@
 		});
 
 		it('Allows all attachment urls to be gotten in one shot', function(done) {
-			
 			done();
 		});
 	});

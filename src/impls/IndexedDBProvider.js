@@ -61,23 +61,33 @@ var IndexedDBProvider = (function(Q) {
 			var del = transaction.objectStore('files').delete(path);
 
 			del.onsuccess = function(e) {
-				finalDeferred.resolve(deferred);
+				deferred.promise.then(function() {
+					finalDeferred.resolve();
+				});
 			};
 
 			del.onerror = function(e) {
-				finalDeferred.reject(e);
+				deferred.promise.catch(function() {
+					finalDeferred.reject(e);
+				});
 			};
 
-			var index = transaction.objectStore('attachments').index('fname');
-			var del2 = index.delete(utils.splitAttachmentPath(path)[0]);
-
-			del2.onsuccess = function(e) {
-				deferred.resolve(e);
+			var attachmentsStore = transaction.objectStore('attachments');
+			var index = attachmentsStore.index('fname');
+			var cursor = index.openCursor(IDBKeyRange.only(path));
+			cursor.onsuccess = function(e) {
+				var cursor = e.target.result;
+				if (cursor) {
+					cursor.delete();
+					cursor.continue();
+				} else {
+					deferred.resolve();
+				}
 			};
 
-			del2.onerror = function(e) {
+			cursor.onerror = function(e) {
 				deferred.reject(e);
-			};
+			}
 
 			return finalDeferred.promise;
 		},
@@ -90,6 +100,11 @@ var IndexedDBProvider = (function(Q) {
 
 			var self = this;
 			get.onsuccess = function(e) {
+				if (!e.target.result) {
+					deferred.reject({code: 1});
+					return;
+				}
+
 				var data = e.target.result.data;
 				if (!self._supportsBlobs) {
 					data = dataURLToBlob(data);
@@ -98,10 +113,39 @@ var IndexedDBProvider = (function(Q) {
 			};
 
 			get.onerror = function(e) {
-				deferred.resolve(e);
+				deferred.reject(e);
 			};
 
 			return deferred.promise;
+		},
+
+		getAllAttachments: function(path) {
+			var deferred = Q.defer();
+
+			var transaction = this._db.transaction(['attachments'], 'readonly');
+			var index =transaction.objectStore('attachments').index('fname');
+
+			var cursor = index.openCursor(IDBKeyRange.only(path));
+			var promises = [];
+			cursor.onsuccess = function(e) {
+				var cursor = e.target.result;
+				if (cursor) {
+					// promises.push();
+					console.log(cursor.value);
+				} else {
+					deferred.resolve();
+				}
+			};
+
+			cursor.onerror = function(e) {
+
+			};
+
+			return deferred.promise;
+		},
+
+		getAllAttachmentURLs: function(path) {
+
 		},
 
 		getAttachmentURL: function(path) {

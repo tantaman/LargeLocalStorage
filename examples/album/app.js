@@ -3,6 +3,7 @@
 
 	var storage = new LargeLocalStorage({
 		size: 20 * 1024 * 1024
+		// forceProvider: 'IndexedDB'
 		// forceProvider: 'WebSQL'
 	});
 
