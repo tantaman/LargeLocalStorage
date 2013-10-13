@@ -108,6 +108,11 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.getAttachment(path);
 		},
 
+		setAttachment: function(path, data) {
+			this._checkAvailability();
+			return this._impl.setAttachment(path, data);
+		},
+
 		getAttachmentURL: function(path) {
 			this._checkAvailability();
 			return this._impl.getAttachmentURL(path);
@@ -126,11 +131,6 @@ var LargeLocalStorage = (function(Q) {
 		revokeAttachmentURL: function(url) {
 			this._checkAvailability();
 			return this._impl.revokeAttachmentURL(url);
-		},
-
-		setAttachment: function(path, data) {
-			this._checkAvailability();
-			return this._impl.setAttachment(path, data);
 		},
 
 		rmAttachment: function(path) {

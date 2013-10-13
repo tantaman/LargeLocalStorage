@@ -33,5 +33,12 @@ var utils = {
         }
 
         return new Blob([uInt8Array.buffer], {type: contentType});
+    },
+
+    splitAttachmentPath: function(path) {
+      var parts = path.split('/');
+      if (parts.length == 1) 
+        parts.unshift('__nodoc__');
+      return parts;
     }
 };

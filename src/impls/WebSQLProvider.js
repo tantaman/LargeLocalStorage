@@ -56,7 +56,7 @@ var WebSQLProvider = (function(Q) {
 		},
 
 		getAttachment: function(path) {
-			var parts = path.split('/');
+			var parts = utils.splitAttachmentPath(path);
 			var fname = parts[0];
 			var akey = parts[1];
 			var deferred = Q.defer();
@@ -94,7 +94,7 @@ var WebSQLProvider = (function(Q) {
 		},
 
 		setAttachment: function(path, data) {
-			var parts = path.split('/');
+			var parts = utils.splitAttachmentPath(path);
 			var fname = parts[0];
 			var akey = parts[1];
 			var deferred = Q.defer();
@@ -116,7 +116,7 @@ var WebSQLProvider = (function(Q) {
 		},
 
 		rmAttachment: function(path) {
-			var parts = path.split('/');
+			var parts = utils.splitAttachmentPath(path);
 			var fname = parts[0];
 			var akey = parts[1];
 			var deferred = Q.defer();

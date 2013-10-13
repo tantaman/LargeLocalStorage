@@ -1,7 +1,7 @@
 (function(lls) {
 	var storage = new lls({
 		size: 10 * 1024 * 1024
-		//forceProvider: 'WebSQL' // force a desired provider.
+		// forceProvider: 'IndexedDB' // force a desired provider.
 	});
 
 	function fail(err) {

@@ -1,51 +1,4 @@
 var FilesystemAPIProvider = (function(Q) {
-	function dirName(path) {
-		var i = path.lastIndexOf('/');
-		if (i !== -1) {
-			return path.substring(0, i);
-		} else {
-			return '';
-		}
-	}
-
-	  /**
-	  * Returns the base name of the path
-	  * e.g., baseName("path/to/some/file.txt") will return "file.txt"
-	  * baseName("path/to/some/file.txt", "txt") will return "file"
-	  * baseName("path/to/some/dir/") will return "dir"
-	  * @method baseName
-	  * @param {String} path the path
-	  * @param {String} [extension] extension to be stripped
-	  * @returns {String} base name
-	  */
-	function baseName(path, extension) {
-		var idx;
-		if (path[path.length - 1] === "/") {
-			path = path.substring(0, path.length - 1);
-		}
-		idx = path.lastIndexOf("/");
-		if (idx !== -1 && idx + 1 < path.length) {
-			path = path.substring(idx + 1, path.length);
-		}
-		if (extension != null) {
-			idx = path.lastIndexOf(extension);
-			if (idx + extension.length === path.length) {
-				path = path.substring(0, idx);
-			}
-		}
-		return path;
-	}
-
-	//
-	// myPres.strut
-	// myPres.strut-attachments/
-	//  -a1
-	//  -a2
-	// otherPres.strut
-	// otherPres.strut-attachments/
-	//  -a1
-	//  -a2...
-
 	function makeErrorHandler(deferred, msg) {
 		// TODO: normalize the error so
 		// we can handle it upstream
@@ -57,11 +10,12 @@ var FilesystemAPIProvider = (function(Q) {
 	}
 
 	function getAttachmentPath(path) {
-		var dir = dirName(path);
+		var parts = utils.splitAttachmentPath(path);
+		var dir = parts[0];
 		var attachmentsDir = dir + "-attachments";
 		return {
 			dir: attachmentsDir,
-			path: attachmentsDir + "/" + baseName(path)
+			path: attachmentsDir + "/" + parts[1]
 		};
 	}
 
