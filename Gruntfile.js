@@ -26,8 +26,17 @@ module.exports = function (grunt) {
 				files: ["src/**/*.js"],
 				tasks: ["concat"]
 			}
+		},
+
+		connect: {
+			server: {
+				options: {
+					port: 9001,
+					base: '.'
+				}
+			}
 		}
 	});
 
-	grunt.registerTask('default', ['concat', 'watch']);
+	grunt.registerTask('default', ['concat', 'connect', 'watch']);
 };
