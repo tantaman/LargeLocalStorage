@@ -4,6 +4,13 @@
 		// forceProvider: 'IndexedDB' // force a desired provider.
 	});
 
+	storage.initialized.then(function() {
+		var runner = mocha.run();
+	}, function(err) {
+		console.log(err);
+		alert('Could not initialize storage.  Did you not authorize it? ' + err);
+	});
+
 	function fail(err) {
 		console.log(err);
 		throw Error("fail.");
@@ -27,9 +34,7 @@
 
 	describe('LargeLocalStorage', function() {
 		it('Allows string contents to be set and read', function(done) {
-			storage.initialized.then(function() {
-				return storage.setContents("testFile", "contents");
-			}).then(function() {
+			storage.setContents("testFile", "contents").then(function() {
 				return storage.getContents("testFile");
 			}).then(function(contents) {
 				expect(contents).to.equal("contents");
@@ -47,9 +52,7 @@
 				b: 2,
 				c: {a: true}
 			};
-			storage.initialized.then(function() {
-				return storage.setContents("testfile2", JSON.stringify(jsondoc));
-			}).then(function() {
+			storage.setContents("testfile2", JSON.stringify(jsondoc)).then(function() {
 				return storage.getContents("testfile2");
 			}).then(function(contents) {
 				expect(jsondoc).to.eql(JSON.parse(contents));
@@ -61,9 +64,7 @@
 		});
 
 		it('Allows items to be deleted', function(done) {
-			storage.initialized.then(function() {
-				return storage.setContents("testfile3", "contents");
-			}).then(function() {
+			storage.setContents("testfile3", "contents").then(function() {
 				return storage.rm("testfile3");
 			}).then(function() {
 				return storage.getContents("testfile3");
@@ -78,9 +79,7 @@
 
 		it('Allows attachments to be written, read', function(done) {
 			getAttachment("elephant.jpg", function(blob) {
-				storage.initialized.then(function() {
-					return storage.setContents("testfile4", "file...");
-				}).then(function() {
+				storage.setContents("testfile4", "file...").then(function() {
 					return storage.setAttachment("testfile4/ele", blob);
 				}).then(function() {
 					return storage.getAttachment("testfile4/ele");
