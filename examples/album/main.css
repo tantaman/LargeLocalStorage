@@ -1,0 +1,16 @@
+.dndArea {
+	margin-top: 20px;
+	border: 2px dashed #bbb;
+	border-radius: 5px;
+	min-height: 240px;
+}
+
+.storageNotice {
+	position: absolute;
+	width: 100%;
+	height: 100%;
+	top: 20px;
+	text-align: center;
+	-webkit-transition: opacity 1s;
+	transition: all 1s;
+}

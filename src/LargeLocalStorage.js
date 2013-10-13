@@ -112,6 +112,16 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.getAttachmentURL(path);
 		},
 
+		getAllAttachments: function(path) {
+			this._checkAvailability();
+			return this._impl.getAllAttachments(path);
+		},
+
+		getAllAttachmentURLs: function(path) {
+			this._checkAvailability();
+			return this._impl.getAllAttachmentURLs(path);
+		},
+
 		revokeAttachmentURL: function(url) {
 			this._checkAvailability();
 			return this._impl.revokeAttachmentURL(url);
