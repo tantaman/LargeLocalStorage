@@ -35,56 +35,16 @@ var utils = {
         }
 
         return new Blob([uInt8Array.buffer], {type: contentType});
+    },
+
+    splitAttachmentPath: function(path) {
+      var parts = path.split('/');
+      if (parts.length == 1) 
+        parts.unshift('__nodoc__');
+      return parts;
     }
 };
 var FilesystemAPIProvider = (function(Q) {
-	function dirName(path) {
-		var i = path.lastIndexOf('/');
-		if (i !== -1) {
-			return path.substring(0, i);
-		} else {
-			return '';
-		}
-	}
-
-	  /**
-	  * Returns the base name of the path
-	  * e.g., baseName("path/to/some/file.txt") will return "file.txt"
-	  * baseName("path/to/some/file.txt", "txt") will return "file"
-	  * baseName("path/to/some/dir/") will return "dir"
-	  * @method baseName
-	  * @param {String} path the path
-	  * @param {String} [extension] extension to be stripped
-	  * @returns {String} base name
-	  */
-	function baseName(path, extension) {
-		var idx;
-		if (path[path.length - 1] === "/") {
-			path = path.substring(0, path.length - 1);
-		}
-		idx = path.lastIndexOf("/");
-		if (idx !== -1 && idx + 1 < path.length) {
-			path = path.substring(idx + 1, path.length);
-		}
-		if (extension != null) {
-			idx = path.lastIndexOf(extension);
-			if (idx + extension.length === path.length) {
-				path = path.substring(0, idx);
-			}
-		}
-		return path;
-	}
-
-	//
-	// myPres.strut
-	// myPres.strut-attachments/
-	//  -a1
-	//  -a2
-	// otherPres.strut
-	// otherPres.strut-attachments/
-	//  -a1
-	//  -a2...
-
 	function makeErrorHandler(deferred, msg) {
 		// TODO: normalize the error so
 		// we can handle it upstream
@@ -96,11 +56,12 @@ var FilesystemAPIProvider = (function(Q) {
 	}
 
 	function getAttachmentPath(path) {
-		var dir = dirName(path);
+		var parts = utils.splitAttachmentPath(path);
+		var dir = parts[0];
 		var attachmentsDir = dir + "-attachments";
 		return {
 			dir: attachmentsDir,
-			path: attachmentsDir + "/" + baseName(path)
+			path: attachmentsDir + "/" + parts[1]
 		};
 	}
 
@@ -348,29 +309,23 @@ var IndexedDBProvider = (function(Q) {
 			var transaction = this._db.transaction(['files', 'attachments'], 'readwrite');
 			
 			var del = transaction.objectStore('files').delete(path);
-			var openCur = transaction.objectStore('attachments').openCursor();
 
 			del.onsuccess = function(e) {
 				finalDeferred.resolve(deferred);
 			};
 
 			del.onerror = function(e) {
-				finalDeferred.reject();
+				finalDeferred.reject(e);
 			};
 
-			openCur.onsuccess = function(e) {
-				var cursor = e.target.result;
-				if (cursor) {
-					// check if the item has the key we are interested in
-					if (cursor.primaryKey.indexOf(path) == 0)
-						cursor.delete();
-					cursor.continue();
-				} else {
-					deferred.resolve();
-				}
+			var index = transaction.objectStore('attachments').index('fname');
+			var del2 = index.delete(utils.splitAttachmentPath(path)[0]);
+
+			del2.onsuccess = function(e) {
+				deferred.resolve(e);
 			};
 
-			openCur.onerror = function(e) {
+			del2.onerror = function(e) {
 				deferred.reject(e);
 			};
 
@@ -385,7 +340,7 @@ var IndexedDBProvider = (function(Q) {
 
 			var self = this;
 			get.onsuccess = function(e) {
-				var data = e.target.result;
+				var data = e.target.result.data;
 				if (!self._supportsBlobs) {
 					data = dataURLToBlob(data);
 				}
@@ -415,6 +370,7 @@ var IndexedDBProvider = (function(Q) {
 		},
 
 		setAttachment: function(path, data) {
+			var parts = utils.splitAttachmentPath(path);
 			var deferred = Q.defer();
 
 			if (data instanceof Blob && !this._supportsBlobs) {
@@ -427,8 +383,13 @@ var IndexedDBProvider = (function(Q) {
 			}
 
 			function continuation(data) {
+				var obj = {
+					path: path,
+					fname: parts[0],
+					data: data
+				};
 				var transaction = this._db.transaction(['attachments'], 'readwrite');
-				var put = transaction.objectStore('attachments').put(data, path);
+				var put = transaction.objectStore('attachments').put(obj);
 
 				put.onsuccess = function(e) {
 					deferred.resolve(e);
@@ -465,7 +426,7 @@ var IndexedDBProvider = (function(Q) {
 
 			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
 			IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction,
-			dbVersion = 1.0;
+			dbVersion = 2;
 
 			if (!indexedDB || !IDBTransaction) {
 				deferred.reject("No IndexedDB");
@@ -476,7 +437,8 @@ var IndexedDBProvider = (function(Q) {
 
 			function createObjectStore(db) {
 				db.createObjectStore("files");
-				db.createObjectStore("attachments");
+				var attachStore = db.createObjectStore("attachments", {keyPath: 'path'});
+				attachStore.createIndex('fname', 'fname', {unique: false})
 			}
 
 			// TODO: normalize errors
@@ -581,7 +543,7 @@ var WebSQLProvider = (function(Q) {
 		},
 
 		getAttachment: function(path) {
-			var parts = path.split('/');
+			var parts = utils.splitAttachmentPath(path);
 			var fname = parts[0];
 			var akey = parts[1];
 			var deferred = Q.defer();
@@ -619,7 +581,7 @@ var WebSQLProvider = (function(Q) {
 		},
 
 		setAttachment: function(path, data) {
-			var parts = path.split('/');
+			var parts = utils.splitAttachmentPath(path);
 			var fname = parts[0];
 			var akey = parts[1];
 			var deferred = Q.defer();
@@ -641,7 +603,7 @@ var WebSQLProvider = (function(Q) {
 		},
 
 		rmAttachment: function(path) {
-			var parts = path.split('/');
+			var parts = utils.splitAttachmentPath(path);
 			var fname = parts[0];
 			var akey = parts[1];
 			var deferred = Q.defer();
@@ -795,6 +757,11 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.getAttachment(path);
 		},
 
+		setAttachment: function(path, data) {
+			this._checkAvailability();
+			return this._impl.setAttachment(path, data);
+		},
+
 		getAttachmentURL: function(path) {
 			this._checkAvailability();
 			return this._impl.getAttachmentURL(path);
@@ -813,11 +780,6 @@ var LargeLocalStorage = (function(Q) {
 		revokeAttachmentURL: function(url) {
 			this._checkAvailability();
 			return this._impl.revokeAttachmentURL(url);
-		},
-
-		setAttachment: function(path, data) {
-			this._checkAvailability();
-			return this._impl.setAttachment(path, data);
 		},
 
 		rmAttachment: function(path) {

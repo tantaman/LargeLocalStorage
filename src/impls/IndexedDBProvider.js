@@ -59,29 +59,23 @@ var IndexedDBProvider = (function(Q) {
 			var transaction = this._db.transaction(['files', 'attachments'], 'readwrite');
 			
 			var del = transaction.objectStore('files').delete(path);
-			var openCur = transaction.objectStore('attachments').openCursor();
 
 			del.onsuccess = function(e) {
 				finalDeferred.resolve(deferred);
 			};
 
 			del.onerror = function(e) {
-				finalDeferred.reject();
+				finalDeferred.reject(e);
 			};
 
-			openCur.onsuccess = function(e) {
-				var cursor = e.target.result;
-				if (cursor) {
-					// check if the item has the key we are interested in
-					if (cursor.primaryKey.indexOf(path) == 0)
-						cursor.delete();
-					cursor.continue();
-				} else {
-					deferred.resolve();
-				}
+			var index = transaction.objectStore('attachments').index('fname');
+			var del2 = index.delete(utils.splitAttachmentPath(path)[0]);
+
+			del2.onsuccess = function(e) {
+				deferred.resolve(e);
 			};
 
-			openCur.onerror = function(e) {
+			del2.onerror = function(e) {
 				deferred.reject(e);
 			};
 
@@ -96,7 +90,7 @@ var IndexedDBProvider = (function(Q) {
 
 			var self = this;
 			get.onsuccess = function(e) {
-				var data = e.target.result;
+				var data = e.target.result.data;
 				if (!self._supportsBlobs) {
 					data = dataURLToBlob(data);
 				}
@@ -126,6 +120,7 @@ var IndexedDBProvider = (function(Q) {
 		},
 
 		setAttachment: function(path, data) {
+			var parts = utils.splitAttachmentPath(path);
 			var deferred = Q.defer();
 
 			if (data instanceof Blob && !this._supportsBlobs) {
@@ -138,8 +133,13 @@ var IndexedDBProvider = (function(Q) {
 			}
 
 			function continuation(data) {
+				var obj = {
+					path: path,
+					fname: parts[0],
+					data: data
+				};
 				var transaction = this._db.transaction(['attachments'], 'readwrite');
-				var put = transaction.objectStore('attachments').put(data, path);
+				var put = transaction.objectStore('attachments').put(obj);
 
 				put.onsuccess = function(e) {
 					deferred.resolve(e);
@@ -176,7 +176,7 @@ var IndexedDBProvider = (function(Q) {
 
 			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
 			IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction,
-			dbVersion = 1.0;
+			dbVersion = 2;
 
 			if (!indexedDB || !IDBTransaction) {
 				deferred.reject("No IndexedDB");
@@ -187,7 +187,8 @@ var IndexedDBProvider = (function(Q) {
 
 			function createObjectStore(db) {
 				db.createObjectStore("files");
-				db.createObjectStore("attachments");
+				var attachStore = db.createObjectStore("attachments", {keyPath: 'path'});
+				attachStore.createIndex('fname', 'fname', {unique: false})
 			}
 
 			// TODO: normalize errors
