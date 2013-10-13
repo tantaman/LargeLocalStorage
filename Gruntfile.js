@@ -19,6 +19,15 @@ module.exports = function (grunt) {
 					  'src/footer.js'],
 				dest: 'dist/LargeLocalStorage.js'
 			}
+		},
+
+		watch: {
+			scripts: {
+				files: ["src/**/*.js"],
+				tasks: ["concat"]
+			}
 		}
 	});
+
+	grunt.registerTask('default', ['concat', 'watch']);
 };
