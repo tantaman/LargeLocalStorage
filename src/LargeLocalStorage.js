@@ -102,6 +102,7 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.setContents(path, data);
 		},
 
+		// TODO: split and normalize the path at this level
 		getAttachment: function(path) {
 			this._checkAvailability();
 			return this._impl.getAttachment(path);

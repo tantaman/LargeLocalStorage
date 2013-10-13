@@ -32,6 +32,6 @@ var utils = {
           uInt8Array[i] = raw.charCodeAt(i);
         }
 
-        return new Blob([uInt8Array], {type: contentType});
+        return new Blob([uInt8Array.buffer], {type: contentType});
     }
 };

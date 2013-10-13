@@ -34,7 +34,7 @@ var utils = {
           uInt8Array[i] = raw.charCodeAt(i);
         }
 
-        return new Blob([uInt8Array], {type: contentType});
+        return new Blob([uInt8Array.buffer], {type: contentType});
     }
 };
 var FilesystemAPIProvider = (function(Q) {
@@ -789,6 +789,7 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.setContents(path, data);
 		},
 
+		// TODO: split and normalize the path at this level
 		getAttachment: function(path) {
 			this._checkAvailability();
 			return this._impl.getAttachment(path);
