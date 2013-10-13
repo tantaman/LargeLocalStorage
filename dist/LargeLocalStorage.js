@@ -169,9 +169,11 @@ var FilesystemAPIProvider = (function(Q) {
 			var attachmentPath = getAttachmentPath(path).path;
 
 			var deferred = Q.defer();
-			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
-				deferred.resolve(fileEntry.toURL());
-			}, makeErrorHandler(deferred, "getting attachment file entry"));
+			var url = 'filesystem:' + window.location.protocol + '//' + window.location.host + '/persistent/' + attachmentPath;
+			deferred.resolve(url);
+			// this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
+			// 	deferred.resolve(fileEntry.toURL());
+			// }, makeErrorHandler(deferred, "getting attachment file entry"));
 
 			return deferred.promise;
 		},
