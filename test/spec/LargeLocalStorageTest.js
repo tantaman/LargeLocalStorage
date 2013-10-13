@@ -139,5 +139,15 @@
 		it('Allows one to revoke attachment urls', function() {
 			storage.revokeAttachmentURL('');
 		});
+
+		it('Allows all attachments to be gotten in one shot', function(done) {
+			storage.getAllAttachments('album').then(function() {
+				console.log(arguments);
+				done();
+			}, function() {
+				console.log(arguments);
+				done();
+			})
+		});
 	});
 })(LargeLocalStorage);

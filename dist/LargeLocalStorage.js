@@ -65,6 +65,19 @@ var FilesystemAPIProvider = (function(Q) {
 		};
 	}
 
+	function readDirEntries(reader, deferred, result) {
+		reader.readEntries(function(entries) {
+			if (entries.length == 0)
+				deferred.resolve(result);
+			else {
+				result = result.concat(entries);
+				readDirEntries(reader, deferred, result);
+			}
+		}, function(err) {
+			deferred.reject(err);
+		});
+	}
+
 	function FSAPI(fs, numBytes) {
 		this._fs = fs;
 		this._capacity = numBytes;
@@ -143,7 +156,7 @@ var FilesystemAPIProvider = (function(Q) {
 				},
 				function(err) {
 					if (err.code === FileError.NOT_FOUND_ERROR) {
-						deferred.resolve();
+						deferred.resolve({code: 1});
 					} else {
 						makeErrorHandler(deferred, "get attachment dir for rm " + attachmentsDir)(err);
 					}
@@ -176,6 +189,26 @@ var FilesystemAPIProvider = (function(Q) {
 			// }, makeErrorHandler(deferred, "getting attachment file entry"));
 
 			return deferred.promise;
+		},
+
+		getAllAttachments: function(path) {
+			var deferred = Q.defer();
+
+			var attachmentsDir = path + "-attachments";
+
+			this._fs.root.getDirectory(attachmentsDir, {},
+			function(entry) {
+				var reader = entry.createReader();
+				readDirEntries(reader, deferred, []);
+			}, function(err) {
+				deferred.reject(err);
+			});
+
+			return deferred.promise;
+		},
+
+		getAllAttachmentURLs: function(path) {
+
 		},
 
 		revokeAttachmentURL: function(url) {
