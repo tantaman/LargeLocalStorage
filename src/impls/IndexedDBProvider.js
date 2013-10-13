@@ -121,24 +121,31 @@ var IndexedDBProvider = (function(Q) {
 
 		getAllAttachments: function(path) {
 			var deferred = Q.defer();
+			var self = this;
 
 			var transaction = this._db.transaction(['attachments'], 'readonly');
-			var index =transaction.objectStore('attachments').index('fname');
+			var index = transaction.objectStore('attachments').index('fname');
 
 			var cursor = index.openCursor(IDBKeyRange.only(path));
-			var promises = [];
+			var values = [];
 			cursor.onsuccess = function(e) {
 				var cursor = e.target.result;
 				if (cursor) {
-					// promises.push();
-					console.log(cursor.value);
+					var data;
+					if (!self._supportsBlobs) {
+						data = dataURLToBlob(cursor.value.data)
+					} else {
+						data = cursor.value.data;
+					}
+					values.push(data);
+					cursor.continue();
 				} else {
-					deferred.resolve();
+					deferred.resolve(values);
 				}
 			};
 
 			cursor.onerror = function(e) {
-
+				deferred.reject(e);
 			};
 
 			return deferred.promise;
