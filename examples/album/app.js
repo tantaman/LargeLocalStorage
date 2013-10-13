@@ -2,7 +2,8 @@
 	'use strict';
 
 	var storage = new LargeLocalStorage({
-		size: 20 * 1024 * 1024
+		size: 20 * 1024 * 1024,
+		forceProvider: 'WebSQL'
 	});
 
 	storage.initialized.then(function() {
@@ -57,14 +58,14 @@
 			this.$thumbs.append('<div class="col-sm-6 col-md-3">' +
 				'<img src="' + url + '" style="width: 171px; height: 180px"></img>' +
 				'</div>');
-			storage.revokeAttachmentURL(url);
+			// storage.revokeAttachmentURL(url);
 		},
 
 		_renderExistingPhotos: function() {
-			storage.getAllAttachmentURLs('album/')
-			.then(function(urls) {
-				foreach(this._appendImage, urls);
-			});
+			// storage.getAllAttachmentURLs('album/')
+			// .then(function(urls) {
+			// 	foreach(this._appendImage, urls);
+			// });
 		}
 	};
 

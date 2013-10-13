@@ -5,6 +5,7 @@ var WebSQLProvider = (function(Q) {
 
 	function WSQL(db) {
 		this._db = db;
+		this.type = 'WebSQL';
 	}
 
 	WSQL.prototype = {
@@ -148,6 +149,7 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql('CREATE TABLE IF NOT EXISTS attachments (fname, akey, value)');
 				tx.executeSql('CREATE INDEX IF NOT EXISTS fname_index ON attachments (fname)');
 				tx.executeSql('CREATE INDEX IF NOT EXISTS akey_index ON attachments (akey)');
+				tx.executeSql('CREATE UNIQUE INDEX IF NOT EXISTS uniq_attach ON attachments (fname, akey)')
 			}, function(err) {
 				deferred.reject(err);
 			}, function() {

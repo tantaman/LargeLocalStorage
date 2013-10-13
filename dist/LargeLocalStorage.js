@@ -530,6 +530,7 @@ var WebSQLProvider = (function(Q) {
 
 	function WSQL(db) {
 		this._db = db;
+		this.type = 'WebSQL';
 	}
 
 	WSQL.prototype = {
@@ -673,6 +674,7 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql('CREATE TABLE IF NOT EXISTS attachments (fname, akey, value)');
 				tx.executeSql('CREATE INDEX IF NOT EXISTS fname_index ON attachments (fname)');
 				tx.executeSql('CREATE INDEX IF NOT EXISTS akey_index ON attachments (akey)');
+				tx.executeSql('CREATE UNIQUE INDEX IF NOT EXISTS uniq_attach ON attachments (fname, akey)')
 			}, function(err) {
 				deferred.reject(err);
 			}, function() {
@@ -797,6 +799,16 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.getAttachmentURL(path);
 		},
 
+		getAllAttachments: function(path) {
+			this._checkAvailability();
+			return this._impl.getAllAttachments(path);
+		},
+
+		getAllAttachmentURLs: function(path) {
+			this._checkAvailability();
+			return this._impl.getAllAttachmentURLs(path);
+		},
+
 		revokeAttachmentURL: function(url) {
 			this._checkAvailability();
 			return this._impl.revokeAttachmentURL(url);
@@ -814,7 +826,10 @@ var LargeLocalStorage = (function(Q) {
 
 		getCapacity: function() {
 			this._checkAvailability();
-			return this._impl.getCapacity();
+			if (this._impl.getCapacity)
+				return this._impl.getCapacity();
+			else
+				return -1;
 		},
 
 		_checkAvailability: function() {
