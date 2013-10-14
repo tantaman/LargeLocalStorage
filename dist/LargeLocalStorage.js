@@ -5,8 +5,8 @@ var utils = (function() {
 		convertToBase64: function(blob, cb) {
 			var fr = new FileReader();
 			fr.onload = function(e) {
-					cb(e.target.result);
-			}
+				cb(e.target.result);
+			};
 			fr.onerror = function(e) {
 			};
 			fr.onabort = function(e) {

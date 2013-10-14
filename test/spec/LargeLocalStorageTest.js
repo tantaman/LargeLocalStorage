@@ -32,11 +32,20 @@
             blob;
 
         xhr.open("GET", a, true);
-        xhr.responseType = "blob";
+        var is_safari = navigator.userAgent.indexOf("Safari") > -1;
+        if (is_safari) {
+        	xhr.responseType = "arraybuffer";
+        } else {
+        	xhr.responseType = "blob";
+        }
 
         xhr.addEventListener("load", function () {
             if (xhr.status === 200) {
-                blob = xhr.response;
+            	if (is_safari) {
+            		blob = new Blob([xhr.response], {type: 'image/jpeg'});
+            	} else {
+            		blob = xhr.response;
+            	}
                 cb(blob);
             }
         }, false);
