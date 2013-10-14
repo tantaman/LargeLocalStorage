@@ -89,6 +89,44 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
+		getAllAttachments: function(path) {
+			var deferred = Q.defer();
+
+			this._db.transaction(function(tx) {
+				tx.executeSql('SELECT value FROM attachments WHERE fname = ?',
+				[path],
+				function(tx, res) {
+					// TODO: ship this work off to a webworker
+					// since there could be many of these conversions?
+					var result = [];
+					for (var i = 0; i < res.rows.length; ++i) {
+						result.push(dataURLToBlob(res.rows.item(i).value))
+					}
+
+					deferred.resolve(result);
+				});
+			}, function(err) {
+				deferred.reject(err);
+			});
+
+			return deferred.promise;
+		},
+
+		getAllAttachmentURLs: function(path) {
+			var deferred = Q.defer();
+			this.getAllAttachments(path).then(function(attachments) {
+				var urls = attachments.map(function(a) {
+					return URL.createObjectURL(a);
+				});
+
+				deferred.resolve(urls);
+			}, function(e) {
+				deferred.reject(e);
+			});
+
+			return deferred.promise;
+		},
+
 		revokeAttachmentURL: function(url) {
 			URL.revokeObjectURL(url);
 		},
