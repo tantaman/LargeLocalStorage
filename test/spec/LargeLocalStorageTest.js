@@ -1,7 +1,7 @@
 (function(lls) {
 	var storage = new lls({
 		size: 10 * 1024 * 1024
-		// forceProvider: 'IndexedDB' // force a desired provider.
+		// forceProvider: 'WebSQL' // force a desired provider.
 	});
 
 	storage.initialized.then(function() {
@@ -10,6 +10,17 @@
 		console.log(err);
 		alert('Could not initialize storage.  Did you not authorize it? ' + err);
 	});
+
+	function countdown(n, cb) {
+		var args = [];
+		return function() {
+			for (var i = 0; i < arguments.length; ++i)
+				args.push(arguments[i]);
+			n -= 1;
+			if (n == 0)
+				cb.apply(this, args);
+		}
+	}
 
 	function fail(err) {
 		console.log(err);
@@ -150,18 +161,37 @@
 		});
 
 		it('Allows all attachments to be gotten in one shot', function(done) {
-			storage.getAllAttachments('album').then(function() {
-				console.log(arguments);
-				done();
-			}, function(e) {
-				fail(e);
-				done();
-			})
+			var c = countdown(2, continuation);
+			getAttachment("pie.jpg", function(pie) {
+				c(pie);
+			});
+
+			getAttachment("elephant.jpg", function(ele) {
+				c(ele);
+			});
+
+			function continuation(blob1, blob2) {
+				Q.all([
+					storage.setAttachment("testfile6/blob1", blob1),
+					storage.setAttachment("testfile6/blob2", blob2)
+				]).then(function() {
+					return storage.getAllAttachments("testfile6");
+				}).then(function(attachments) {
+					expect(attachments.length).to.equal(2);
+					done();
+				}).catch(function(err) {
+					fail(err);
+					done();
+				});
+			}
 		});
 
 		it('Allows all attachment urls to be gotten in one shot', function(done) {
-			storage.getAllAttachmentURLs('album').then(function() {
-				console.log(arguments);
+			storage.getAllAttachmentURLs('testfile6').then(function(urls) {
+				expect(urls.length).to.equal(2);
+				urls.forEach(function(url) {
+					$(document.body).append('<img src="' + url + '"></img>');
+				});
 				done();
 			}, function(e) {
 				fail(e);

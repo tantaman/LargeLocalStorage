@@ -152,7 +152,18 @@ var IndexedDBProvider = (function(Q) {
 		},
 
 		getAllAttachmentURLs: function(path) {
+			var deferred = Q.defer();
+			this.getAllAttachments(path).then(function(attachments) {
+				var urls = attachments.map(function(a) {
+					return URL.createObjectURL(a);
+				});
 
+				deferred.resolve(urls);
+			}, function(e) {
+				deferred.reject(e);
+			});
+
+			return deferred.promise;
 		},
 
 		getAttachmentURL: function(path) {

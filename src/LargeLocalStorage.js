@@ -42,6 +42,7 @@ var LargeLocalStorage = (function(Q) {
 		}).then(function(impl) {
 			return Q(impl);
 		}, function() {
+			console.error('Unable to create any storage implementations.  Using LocalStorage');
 			return LocalStorageProvider.init(config);
 		});
 	}
