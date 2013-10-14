@@ -1,9 +1,8 @@
-var LargeLocalStorage = (function(Q) {
-
-	/**
-	* @exports LargeLocalStorage
-	*/
-
+var LargeLocalStorage = (
+/**
+* @exports LargeLocalStorage
+*/
+function(Q) {
 	var sessionMeta = localStorage.getItem('LargeLocalStorage-meta');
 	if (sessionMeta)
 		sessionMeta = JSON.parse(sessionMeta);
@@ -106,7 +105,6 @@ var LargeLocalStorage = (function(Q) {
 	 * }
 	 * ```
 	 *
-	 * @class LargeLocalStorage
 	 * @constructor
 	 * @param {object} config
 	 */
