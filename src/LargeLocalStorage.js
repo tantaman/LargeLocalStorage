@@ -1,8 +1,4 @@
-var LargeLocalStorage = (
-/**
-* @exports LargeLocalStorage
-*/
-function(Q) {
+var LargeLocalStorage = (function(Q) {
 	var sessionMeta = localStorage.getItem('LargeLocalStorage-meta');
 	if (sessionMeta)
 		sessionMeta = JSON.parse(sessionMeta);
@@ -105,6 +101,7 @@ function(Q) {
 	 * }
 	 * ```
 	 *
+	 * @class LargeLocalStorage
 	 * @constructor
 	 * @param {object} config
 	 */
@@ -140,6 +137,8 @@ function(Q) {
 		* You can still store attachments via DOMStorage but it
 		* isn't advisable due to the space limit (2.5mb or 5.0mb
 		* depending on the browser)
+		* 
+		* @method supportsAttachments
 		*/
 		supportsAttachments: function() {
 			this._checkAvailability();
@@ -148,6 +147,7 @@ function(Q) {
 
 		/**
 		* Whether or not LLS is ready to store data
+		* @method ready
 		*/
 		ready: function() {
 			return this._impl != null;
@@ -161,6 +161,7 @@ function(Q) {
 		* Returns a promise that is fulfilled with
 		* the listing.
 		*
+		* @method ls
 		* @param {string} [docKey]
 		* @returns {promise}
 		*/
@@ -176,6 +177,7 @@ function(Q) {
 		* Returns a promise that is fulfilled when the
 		* removal completes.
 		*
+		* @method rm
 		* @param {string} docKey
 		* @returns {promise}
 		*/
@@ -191,6 +193,7 @@ function(Q) {
 		* TODO: normalize all implementations to allow storage
 		* and retrieval of JS objects?
 		*
+		* @method getContents
 		* @param {string} docKey
 		* @returns {promise}
 		*/
@@ -202,6 +205,7 @@ function(Q) {
 		/**
 		* Set the contents identified by docKey with data.
 		*
+		* @method setContents
 		* @param {string} docKey
 		* @param {any} data
 		* @returns {promise} fulfilled when set completes
@@ -214,6 +218,7 @@ function(Q) {
 		/**
 		* Get the attachment identified by docKey and attachKey
 		*
+		* @method getAttachment
 		* @param {string} [docKey] optional.  Defaults to __nodoc__
 		* @param {string} attachKey key of the attachment
 		* @returns {promise} fulfilled with the attachment or

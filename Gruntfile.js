@@ -4,6 +4,7 @@ module.exports = function (grunt) {
 	require('matchdep').filterDev('grunt-*').forEach(grunt.loadNpmTasks);
 
 	grunt.initConfig({
+		pkg: grunt.file.readJSON('package.json'),
 		concat: {
 			options: {
 				seperator: ';'
@@ -35,8 +36,24 @@ module.exports = function (grunt) {
 					base: '.'
 				}
 			}
+		},
+
+		yuidoc: {
+			compile: {
+				name: '<%= pkg.name %>',
+				description: '<%= pkg.description %>',
+				version: '<%= pkg.version %>',
+				url: '<%= pkg.homepage %>',
+				options: {
+					paths: 'src',
+					// themedir: 'bower_components/yuidoc-bootstrap-theme',
+					// helpers: ['bower_components/yuidoc-bootstrap-theme/helpers/helpers.js'],
+					outdir: 'doc'
+			      }
+			}
 		}
 	});
 
 	grunt.registerTask('default', ['concat', 'connect', 'watch']);
+	grunt.registerTask('docs', ['yuidoc']);
 };
