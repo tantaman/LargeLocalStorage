@@ -115,6 +115,10 @@ var FilesystemAPIProvider = (function(Q) {
 		entry.file(cb, eb);
 	}
 
+	function entryToURL(entry) {
+		return entry.toURL();
+	}
+
 	function FSAPI(fs, numBytes) {
 		this._fs = fs;
 		this._capacity = numBytes;
@@ -230,7 +234,6 @@ var FilesystemAPIProvider = (function(Q) {
 
 		getAllAttachments: function(path) {
 			var deferred = Q.defer();
-
 			var attachmentsDir = path + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
@@ -246,7 +249,20 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		getAllAttachmentURLs: function(path) {
+			var deferred = Q.defer();
+			var attachmentsDir = path + "-attachments";
 
+			this._fs.root.getDirectory(attachmentsDir, {},
+			function(entry) {
+				var reader = entry.createReader();
+				readDirEntries(reader, []).then(function(entries) {
+					deferred.resolve(entries.map(entryToURL));
+				});
+			}, function(err) {
+				deferred.reject(err);
+			});
+
+			return deferred.promise;
 		},
 
 		revokeAttachmentURL: function(url) {

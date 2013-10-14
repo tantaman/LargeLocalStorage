@@ -13,7 +13,7 @@
 
 	function fail(err) {
 		console.log(err);
-		throw Error("fail.");
+		expect(true).to.equal(false);
 	}
 
 	function getAttachment(a, cb) {
@@ -160,7 +160,13 @@
 		});
 
 		it('Allows all attachment urls to be gotten in one shot', function(done) {
-			done();
+			storage.getAllAttachmentURLs('album').then(function() {
+				console.log(arguments);
+				done();
+			}, function(e) {
+				fail(e);
+				done();
+			});
 		});
 	});
 })(LargeLocalStorage);
