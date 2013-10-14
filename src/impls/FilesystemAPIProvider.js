@@ -9,13 +9,12 @@ var FilesystemAPIProvider = (function(Q) {
 		}
 	}
 
-	function getAttachmentPath(path) {
-		var parts = utils.splitAttachmentPath(path);
-		var dir = parts[0];
-		var attachmentsDir = dir + "-attachments";
+	function getAttachmentPath(docKey, attachKey) {
+		docKey = docKey.replace(/\//g, '--');
+		var attachmentsDir = docKey + "-attachments";
 		return {
 			dir: attachmentsDir,
-			path: attachmentsDir + "/" + parts[1]
+			path: attachmentsDir + "/" + attachKey
 		};
 	}
 
@@ -135,8 +134,8 @@ var FilesystemAPIProvider = (function(Q) {
 			return finalDeferred.promise;
 		},
 
-		getAttachment: function(path) {
-			var attachmentPath = getAttachmentPath(path).path;
+		getAttachment: function(docKey, attachKey) {
+			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
@@ -148,8 +147,8 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachmentURL: function(path) {
-			var attachmentPath = getAttachmentPath(path).path;
+		getAttachmentURL: function(docKey, attachKey) {
+			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			var url = 'filesystem:' + window.location.protocol + '//' + window.location.host + '/persistent/' + attachmentPath;
@@ -202,8 +201,8 @@ var FilesystemAPIProvider = (function(Q) {
 
 		// Create a folder at dirname(path)+"-attachments"
 		// add attachment under that folder as basename(path)
-		setAttachment: function(path, data) {
-			var attachInfo = getAttachmentPath(path);
+		setAttachment: function(docKey, attachKey, data) {
+			var attachInfo = getAttachmentPath(docKey, attachKey);
 
 			var deferred = Q.defer();
 
@@ -216,8 +215,8 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		// rm the thing at dirname(path)+"-attachments/"+basename(path)
-		rmAttachment: function(path) {
-			var attachmentPath = getAttachmentPath(path).path;
+		rmAttachment: function(docKey, attachKey) {
+			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {create:false},

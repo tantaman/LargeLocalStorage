@@ -80,13 +80,12 @@ var FilesystemAPIProvider = (function(Q) {
 		}
 	}
 
-	function getAttachmentPath(path) {
-		var parts = utils.splitAttachmentPath(path);
-		var dir = parts[0];
-		var attachmentsDir = dir + "-attachments";
+	function getAttachmentPath(docKey, attachKey) {
+		docKey = docKey.replace(/\//g, '--');
+		var attachmentsDir = docKey + "-attachments";
 		return {
 			dir: attachmentsDir,
-			path: attachmentsDir + "/" + parts[1]
+			path: attachmentsDir + "/" + attachKey
 		};
 	}
 
@@ -206,8 +205,8 @@ var FilesystemAPIProvider = (function(Q) {
 			return finalDeferred.promise;
 		},
 
-		getAttachment: function(path) {
-			var attachmentPath = getAttachmentPath(path).path;
+		getAttachment: function(docKey, attachKey) {
+			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
@@ -219,8 +218,8 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachmentURL: function(path) {
-			var attachmentPath = getAttachmentPath(path).path;
+		getAttachmentURL: function(docKey, attachKey) {
+			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			var url = 'filesystem:' + window.location.protocol + '//' + window.location.host + '/persistent/' + attachmentPath;
@@ -273,8 +272,8 @@ var FilesystemAPIProvider = (function(Q) {
 
 		// Create a folder at dirname(path)+"-attachments"
 		// add attachment under that folder as basename(path)
-		setAttachment: function(path, data) {
-			var attachInfo = getAttachmentPath(path);
+		setAttachment: function(docKey, attachKey, data) {
+			var attachInfo = getAttachmentPath(docKey, attachKey);
 
 			var deferred = Q.defer();
 
@@ -287,8 +286,8 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		// rm the thing at dirname(path)+"-attachments/"+basename(path)
-		rmAttachment: function(path) {
-			var attachmentPath = getAttachmentPath(path).path;
+		rmAttachment: function(docKey, attachKey) {
+			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {create:false},
@@ -359,11 +358,11 @@ var IndexedDBProvider = (function(Q) {
 
 	// TODO: normalize returns and errors.
 	IDB.prototype = {
-		getContents: function(path) {
+		getContents: function(docKey) {
 			var deferred = Q.defer();
 			var transaction = this._db.transaction(['files'], 'readonly');
 
-			var get = transaction.objectStore('files').get(path);
+			var get = transaction.objectStore('files').get(docKey);
 			get.onsuccess = function(e) {
 				deferred.resolve(e.target.result);
 			};
@@ -375,11 +374,11 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		setContents: function(path, data) {
+		setContents: function(docKey, data) {
 			var deferred = Q.defer();
 			var transaction = this._db.transaction(['files'], 'readwrite');
 
-			var put = transaction.objectStore('files').put(data, path);
+			var put = transaction.objectStore('files').put(data, docKey);
 			put.onsuccess = function(e) {
 				deferred.resolve(e);
 			};
@@ -391,13 +390,13 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rm: function(path) {
+		rm: function(docKey) {
 			var deferred = Q.defer();
 			var finalDeferred = Q.defer();
 
 			var transaction = this._db.transaction(['files', 'attachments'], 'readwrite');
 			
-			var del = transaction.objectStore('files').delete(path);
+			var del = transaction.objectStore('files').delete(docKey);
 
 			del.onsuccess = function(e) {
 				deferred.promise.then(function() {
@@ -413,7 +412,7 @@ var IndexedDBProvider = (function(Q) {
 
 			var attachmentsStore = transaction.objectStore('attachments');
 			var index = attachmentsStore.index('fname');
-			var cursor = index.openCursor(IDBKeyRange.only(path));
+			var cursor = index.openCursor(IDBKeyRange.only(docKey));
 			cursor.onsuccess = function(e) {
 				var cursor = e.target.result;
 				if (cursor) {
@@ -431,11 +430,11 @@ var IndexedDBProvider = (function(Q) {
 			return finalDeferred.promise;
 		},
 
-		getAttachment: function(path) {
+		getAttachment: function(docKey, attachKey) {
 			var deferred = Q.defer();
 
 			var transaction = this._db.transaction(['attachments'], 'readonly');
-			var get = transaction.objectStore('attachments').get(path);
+			var get = transaction.objectStore('attachments').get(docKey + '/' + attachKey);
 
 			var self = this;
 			get.onsuccess = function(e) {
@@ -458,14 +457,14 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
 			var self = this;
 
 			var transaction = this._db.transaction(['attachments'], 'readonly');
 			var index = transaction.objectStore('attachments').index('fname');
 
-			var cursor = index.openCursor(IDBKeyRange.only(path));
+			var cursor = index.openCursor(IDBKeyRange.only(docKey));
 			var values = [];
 			cursor.onsuccess = function(e) {
 				var cursor = e.target.result;
@@ -490,9 +489,9 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(docKey) {
 			var deferred = Q.defer();
-			this.getAllAttachments(path).then(function(attachments) {
+			this.getAllAttachments(docKey).then(function(attachments) {
 				var urls = attachments.map(function(a) {
 					return URL.createObjectURL(a);
 				});
@@ -505,9 +504,9 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachmentURL: function(path) {
+		getAttachmentURL: function(docKey, attachKey) {
 			var deferred = Q.defer();
-			this.getAttachment(path).then(function(attachment) {
+			this.getAttachment(docKey, attachKey).then(function(attachment) {
 				deferred.resolve(URL.createObjectURL(attachment));
 			}, function(e) {
 				deferred.reject(e);
@@ -520,8 +519,7 @@ var IndexedDBProvider = (function(Q) {
 			URL.revokeObjectURL(url);
 		},
 
-		setAttachment: function(path, data) {
-			var parts = utils.splitAttachmentPath(path);
+		setAttachment: function(docKey, attachKey, data) {
 			var deferred = Q.defer();
 
 			if (data instanceof Blob && !this._supportsBlobs) {
@@ -535,8 +533,8 @@ var IndexedDBProvider = (function(Q) {
 
 			function continuation(data) {
 				var obj = {
-					path: path,
-					fname: parts[0],
+					path: docKey + '/' + attachKey,
+					fname: docKey,
 					data: data
 				};
 				var transaction = this._db.transaction(['attachments'], 'readwrite');
@@ -554,10 +552,10 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rmAttachment: function(path) {
+		rmAttachment: function(docKey, attachKey) {
 			var deferred = Q.defer();
 			var transaction = this._db.transaction(['attachments'], 'readwrite');
-			var del = transaction.objectStore('attachments').delete(path);
+			var del = transaction.objectStore('attachments').delete(docKey + '/' + attachKey);
 
 			del.onsuccess = function(e) {
 				deferred.resolve(e);
@@ -647,10 +645,10 @@ var WebSQLProvider = (function(Q) {
 	}
 
 	WSQL.prototype = {
-		getContents: function(path) {
+		getContents: function(docKey) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
-				tx.executeSql('SELECT value FROM files WHERE fname = ?', [path],
+				tx.executeSql('SELECT value FROM files WHERE fname = ?', [docKey],
 				function(tx, res) {
 					if (res.rows.length == 0) {
 						deferred.reject({code: 1});
@@ -665,11 +663,11 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		setContents: function(path, data) {
+		setContents: function(docKey, data) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
 				tx.executeSql(
-				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [path, data]);
+				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [docKey, data]);
 			}, function(err) {
 				deferred.reject(err);
 			}, function() {
@@ -679,11 +677,11 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rm: function(path) {
+		rm: function(docKey) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
-				tx.executeSql('DELETE FROM files WHERE fname = ?', [path]);
-				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [path]);
+				tx.executeSql('DELETE FROM files WHERE fname = ?', [docKey]);
+				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [docKey]);
 			}, function(err) {
 				deferred.reject(err);
 			}, function() {
@@ -693,10 +691,7 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachment: function(path) {
-			var parts = utils.splitAttachmentPath(path);
-			var fname = parts[0];
-			var akey = parts[1];
+		getAttachment: function(fname, akey) {
 			var deferred = Q.defer();
 
 			this._db.transaction(function(tx){ 
@@ -716,9 +711,9 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachmentURL: function(path) {
+		getAttachmentURL: function(docKey, attachKey) {
 			var deferred = Q.defer();
-			this.getAttachment(path).then(function(blob) {
+			this.getAttachment(docKey, attachKey).then(function(blob) {
 				deferred.resolve(URL.createObjectURL(blob));
 			}, function() {
 				deferred.reject();
@@ -727,12 +722,12 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(fname) {
 			var deferred = Q.defer();
 
 			this._db.transaction(function(tx) {
 				tx.executeSql('SELECT value FROM attachments WHERE fname = ?',
-				[path],
+				[fname],
 				function(tx, res) {
 					// TODO: ship this work off to a webworker
 					// since there could be many of these conversions?
@@ -750,9 +745,9 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(fname) {
 			var deferred = Q.defer();
-			this.getAllAttachments(path).then(function(attachments) {
+			this.getAllAttachments(fname).then(function(attachments) {
 				var urls = attachments.map(function(a) {
 					return URL.createObjectURL(a);
 				});
@@ -769,10 +764,7 @@ var WebSQLProvider = (function(Q) {
 			URL.revokeObjectURL(url);
 		},
 
-		setAttachment: function(path, data) {
-			var parts = utils.splitAttachmentPath(path);
-			var fname = parts[0];
-			var akey = parts[1];
+		setAttachment: function(fname, akey, data) {
 			var deferred = Q.defer();
 
 			var self = this;
@@ -791,10 +783,7 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rmAttachment: function(path) {
-			var parts = utils.splitAttachmentPath(path);
-			var fname = parts[0];
-			var akey = parts[1];
+		rmAttachment: function(fname, akey) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
 				tx.executeSql('DELETE FROM attachments WHERE fname = ? AND akey = ?',
@@ -919,52 +908,57 @@ var LargeLocalStorage = (function(Q) {
 			return true;
 		},
 
-		ls: function(path) {
+		ls: function(docKey) {
 			this._checkAvailability();
-			return this._impl.ls(path);
+			return this._impl.ls(docKey);
 		},
 
-		rm: function(path) {
+		rm: function(docKey) {
 			// check for attachments on this path
 			// delete attachments in the storage as well.
 			this._checkAvailability();
-			return this._impl.rm(path);
+			return this._impl.rm(docKey);
 		},
 
-		getContents: function(path) {
+		getContents: function(docKey) {
 			this._checkAvailability();
-			return this._impl.getContents(path);
+			return this._impl.getContents(docKey);
 		},
 
-		setContents: function(path, data) {
+		setContents: function(docKey, data) {
 			this._checkAvailability();
-			return this._impl.setContents(path, data);
+			return this._impl.setContents(docKey, data);
 		},
 
 		// TODO: split and normalize the path at this level
-		getAttachment: function(path) {
+		getAttachment: function(docKey, attachKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAttachment(path);
+			return this._impl.getAttachment(docKey, attachKey);
 		},
 
-		setAttachment: function(path, data) {
+		setAttachment: function(docKey, attachKey, data) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.setAttachment(path, data);
+			return this._impl.setAttachment(docKey, attachKey, data);
 		},
 
-		getAttachmentURL: function(path) {
+		getAttachmentURL: function(docKey, attachKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAttachmentURL(path);
+			return this._impl.getAttachmentURL(docKey, attachKey);
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(docKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAllAttachments(path);
+			return this._impl.getAllAttachments(docKey);
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(docKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAllAttachmentURLs(path);
+			return this._impl.getAllAttachmentURLs(docKey);
 		},
 
 		revokeAttachmentURL: function(url) {
@@ -972,9 +966,10 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.revokeAttachmentURL(url);
 		},
 
-		rmAttachment: function(path) {
+		rmAttachment: function(docKey, attachKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.rmAttachment(path);
+			return this._impl.rmAttachment(docKey, attachKey);
 		},
 
 		getCapacity: function() {

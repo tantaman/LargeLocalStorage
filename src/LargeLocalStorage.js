@@ -81,52 +81,57 @@ var LargeLocalStorage = (function(Q) {
 			return true;
 		},
 
-		ls: function(path) {
+		ls: function(docKey) {
 			this._checkAvailability();
-			return this._impl.ls(path);
+			return this._impl.ls(docKey);
 		},
 
-		rm: function(path) {
+		rm: function(docKey) {
 			// check for attachments on this path
 			// delete attachments in the storage as well.
 			this._checkAvailability();
-			return this._impl.rm(path);
+			return this._impl.rm(docKey);
 		},
 
-		getContents: function(path) {
+		getContents: function(docKey) {
 			this._checkAvailability();
-			return this._impl.getContents(path);
+			return this._impl.getContents(docKey);
 		},
 
-		setContents: function(path, data) {
+		setContents: function(docKey, data) {
 			this._checkAvailability();
-			return this._impl.setContents(path, data);
+			return this._impl.setContents(docKey, data);
 		},
 
 		// TODO: split and normalize the path at this level
-		getAttachment: function(path) {
+		getAttachment: function(docKey, attachKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAttachment(path);
+			return this._impl.getAttachment(docKey, attachKey);
 		},
 
-		setAttachment: function(path, data) {
+		setAttachment: function(docKey, attachKey, data) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.setAttachment(path, data);
+			return this._impl.setAttachment(docKey, attachKey, data);
 		},
 
-		getAttachmentURL: function(path) {
+		getAttachmentURL: function(docKey, attachKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAttachmentURL(path);
+			return this._impl.getAttachmentURL(docKey, attachKey);
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(docKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAllAttachments(path);
+			return this._impl.getAllAttachments(docKey);
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(docKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.getAllAttachmentURLs(path);
+			return this._impl.getAllAttachmentURLs(docKey);
 		},
 
 		revokeAttachmentURL: function(url) {
@@ -134,9 +139,10 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.revokeAttachmentURL(url);
 		},
 
-		rmAttachment: function(path) {
+		rmAttachment: function(docKey, attachKey) {
+			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
-			return this._impl.rmAttachment(path);
+			return this._impl.rmAttachment(docKey, attachKey);
 		},
 
 		getCapacity: function() {
