@@ -1,3 +1,5 @@
+-return undefined instead of FNF errors when the path / key is incorrect.
+
 -delete database operation
 -ls implementation
 

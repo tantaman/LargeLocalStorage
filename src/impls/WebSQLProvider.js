@@ -104,7 +104,7 @@ var WebSQLProvider = (function(Q) {
 				function(tx, res) {
 					var listing = [];
 					for (var i = 0; i < res.rows.length; ++i) {
-						listing.push(res.row.item(i)[field]);
+						listing.push(res.rows.item(i)[field]);
 					}
 
 					deferred.resolve(listing);

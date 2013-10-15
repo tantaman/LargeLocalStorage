@@ -137,7 +137,7 @@ var IndexedDBProvider = (function(Q) {
 			cursor.onsuccess = function(e) {
 				var cursor = e.target.result;
 				if (cursor) {
-					listing.push(cursor.key);
+					listing.push(!docKey ? cursor.key : cursor.key.split('/')[1]);
 					cursor.continue();
 				} else {
 					deferred.resolve(listing);

@@ -578,7 +578,7 @@ var IndexedDBProvider = (function(Q) {
 			cursor.onsuccess = function(e) {
 				var cursor = e.target.result;
 				if (cursor) {
-					listing.push(cursor.key);
+					listing.push(!docKey ? cursor.key : cursor.key.split('/')[1]);
 					cursor.continue();
 				} else {
 					deferred.resolve(listing);
@@ -910,7 +910,7 @@ var WebSQLProvider = (function(Q) {
 				function(tx, res) {
 					var listing = [];
 					for (var i = 0; i < res.rows.length; ++i) {
-						listing.push(res.row.item(i)[field]);
+						listing.push(res.rows.item(i)[field]);
 					}
 
 					deferred.resolve(listing);
