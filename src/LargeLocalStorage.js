@@ -175,12 +175,10 @@ var LargeLocalStorage = (function(Q) {
 		* Returns a promise that is fulfilled when the
 		* removal completes.
 		*
-		* ```
-		* // Example
-		* stoarge.rm('exampleDoc').then(function() {
-		*	alert('doc and all attachments were removed');
-		* })
-		* ```
+		* @example
+		* 	stoarge.rm('exampleDoc').then(function() {
+		*		alert('doc and all attachments were removed');
+		* 	})
 		*
 		* @method rm
 		* @param {string} docKey
@@ -198,12 +196,10 @@ var LargeLocalStorage = (function(Q) {
 		* TODO: normalize all implementations to allow storage
 		* and retrieval of JS objects?
 		*
-		* ```
-		* // Example
-		* storage.getContents('exampleDoc').then(function(contents) {
-		* 	alert(contents);
-		* });
-		* ```
+		* @example
+		* 	storage.getContents('exampleDoc').then(function(contents) {
+		* 		alert(contents);
+		* 	});
 		*
 		* @method getContents
 		* @param {string} docKey
@@ -218,12 +214,10 @@ var LargeLocalStorage = (function(Q) {
 		* Set the contents identified by `docKey` to `data`.
 		* The document will be created if it does not exist.
 		*
-		* ```
-		* // Example
-		* storage.setContents('exampleDoc', 'some data...').then(function() {
-		*	alert('doc written');
-		* });
-		* ```
+		* @example
+		* 	storage.setContents('exampleDoc', 'some data...').then(function() {
+		*		alert('doc written');
+		* 	});
 		*
 		* @method setContents
 		* @param {string} docKey
@@ -238,15 +232,13 @@ var LargeLocalStorage = (function(Q) {
 		/**
 		* Get the attachment identified by `docKey` and `attachKey`
 		*
-		* ```
-		* // Example
-		* storage.getAttachment('exampleDoc', 'examplePic').then(function(attachment) {
-		*    var url = URL.createObjectURL(attachment);
-		*    var image = new Image(url);
-		*    document.body.appendChild(image);
-		*    URL.revokeObjectURL(url);
-		* })
-		* ```
+		* @example
+		* 	storage.getAttachment('exampleDoc', 'examplePic').then(function(attachment) {
+		*    	var url = URL.createObjectURL(attachment);
+		*    	var image = new Image(url);
+		*    	document.body.appendChild(image);
+		*    	URL.revokeObjectURL(url);
+		* 	})
 		*
 		* @method getAttachment
 		* @param {string} [docKey] Defaults to __nodoc__
@@ -264,12 +256,10 @@ var LargeLocalStorage = (function(Q) {
 		* Set an attachment for a given document.  Identified
 		* by `docKey` and `attachKey`.
 		*
-		* ```
-		* // Example
-		* storage.setAttachment('myDoc', 'myPic', blob).then(function() {
-		*    alert('Attachment written');
-		* })
-		* ```
+		* @example
+		* 	storage.setAttachment('myDoc', 'myPic', blob).then(function() {
+		*    	alert('Attachment written');
+		* 	})
 		*
 		* @method setAttachment
 		* @param {string} [docKey] Defaults to __nodoc__
@@ -286,15 +276,14 @@ var LargeLocalStorage = (function(Q) {
 
 		/**
 		* Get the URL for a given attachment.
-		* ```
-		* // Example
-		* storage.getAttachmentURL('myDoc', 'myPic').then(function(url) {
-	 	*   var image = new Image();
-	 	*   image.src = url;
-	 	*   document.body.appendChild(image);
-	 	*   storage.revokeAttachmentURL(url);
-		* })
-		* ```
+		*
+		* @example
+		* 	storage.getAttachmentURL('myDoc', 'myPic').then(function(url) {
+	 	*   	var image = new Image();
+	 	*   	image.src = url;
+	 	*   	document.body.appendChild(image);
+	 	*   	storage.revokeAttachmentURL(url);
+		* 	})
 		*
 		* This is preferrable to getting the attachment and then getting the
 		* URL via `createObjectURL` (on some systems) as LLS can take advantage of 
@@ -314,19 +303,17 @@ var LargeLocalStorage = (function(Q) {
 		/**
 		* Gets all of the attachments for a document.
 		*
-		* ```
-		* // Example
-		* storage.getAllAttachments('exampleDoc').then(function(attachments) {
-		* 	attachments.map(function(a) {
-		*		// do something with it...
-		* 		if (a.type.indexOf('image') == 0) {
-		*			// show image...
-		*		} else if (a.type.indexOf('audio') == 0) {
-		*			// play audio...
-		*		} else ...
-		*	})
-		* })
-		* ```
+		* @example
+		* 	storage.getAllAttachments('exampleDoc').then(function(attachments) {
+		* 		attachments.map(function(a) {
+		*			// do something with it...
+		* 			if (a.type.indexOf('image') == 0) {
+		*				// show image...
+		*			} else if (a.type.indexOf('audio') == 0) {
+		*				// play audio...
+		*			} else ...
+		*		})
+		* 	})
 		*
 		* @method getAllAttachments
 		* @param {string} [docKey] Identifies the document.  Defaults to __nodoc__
@@ -342,14 +329,12 @@ var LargeLocalStorage = (function(Q) {
 		/**
 		* Gets all attachments URLs for a document.
 		*
-		* ```
-		* // Example
-		* storage.getAllAttachmentURLs('exampleDoc').then(function(urls) {
-		*	urls.map(function(u) {
-		* 		// do something with the url...
+		* @example
+		* 	storage.getAllAttachmentURLs('exampleDoc').then(function(urls) {
+		*		urls.map(function(u) {
+		* 			// do something with the url...
+		* 		})
 		* 	})
-		* })
-		* ```
 		*
 		* @method getAllAttachmentURLs
 		* @param {string} [docKey] Identifies the document.  Defaults to the __nodoc__ document.
@@ -370,13 +355,11 @@ var LargeLocalStorage = (function(Q) {
 		* URLs that come from `getAttachmentURL` or `getAllAttachmentURLs` 
 		* should be revoked by LLS and not `URL.revokeObjectURL`
 		*
-		* ```
-		* // Example
-		* storage.getAttachmentURL('doc', 'attach').then(function(url) {
-		*	// do something with the URL
-		*	storage.revokeAttachmentURL(url);
-		* })
-		* ```
+		* @example
+		* 	storage.getAttachmentURL('doc', 'attach').then(function(url) {
+		*		// do something with the URL
+		*		storage.revokeAttachmentURL(url);
+		* 	})
 		*
 		* @method revokeAttachmentURL
 		* @param {string} url The URL as returned by `getAttachmentURL` or `getAttachmentURLs`
@@ -389,14 +372,12 @@ var LargeLocalStorage = (function(Q) {
 		/**
 		* Remove an attachment from a document.
 		*
-		* ```
-		* // Example
-		* storage.rmAttachment('exampleDoc', 'someAttachment').then(function() {
-		* 	alert('exampleDoc/someAttachment removed');
-		* }).catch(function(e) {
-		*	alert('Attachment removal failed: ' e);
-		* });
-		* ```
+		* @example
+		* 	storage.rmAttachment('exampleDoc', 'someAttachment').then(function() {
+		* 		alert('exampleDoc/someAttachment removed');
+		* 	}).catch(function(e) {
+		*		alert('Attachment removal failed: ' e);
+		* 	});
 		*
 		* @method rmAttachment
 		* @param {string} docKey
