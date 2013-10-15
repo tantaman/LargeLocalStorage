@@ -160,15 +160,23 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = path + "-attachments";
+			var attachmentsDir = docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
 				var reader = entry.createReader();
 				deferred.resolve(
-					utils.mapAsync(entryToFile, readDirEntries(reader, [])));
+					utils.mapAsync(function(entry, cb, eb) {
+						entry.file(function(file) {
+							cb({
+								data: file,
+								docKey: docKey,
+								attachKey: entry.name
+							});
+						}, eb);
+					}, readDirEntries(reader, [])));
 			}, function(err) {
 				deferred.reject(err);
 			});
@@ -176,15 +184,22 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = path + "-attachments";
+			var attachmentsDir = docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
 				var reader = entry.createReader();
 				readDirEntries(reader, []).then(function(entries) {
-					deferred.resolve(entries.map(entryToURL));
+					deferred.resolve(entries.map(
+					function(entry) {
+						return {
+							url: entry.toURL(),
+							docKey: docKey,
+							attachKey: entry.name
+						};
+					}));
 				});
 			}, function(err) {
 				deferred.reject(err);

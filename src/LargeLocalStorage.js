@@ -313,8 +313,9 @@ var LargeLocalStorage = (function(Q) {
 		* Gets all of the attachments for a document.
 		*
 		* @example
-		* 	storage.getAllAttachments('exampleDoc').then(function(attachments) {
-		* 		attachments.map(function(a) {
+		* 	storage.getAllAttachments('exampleDoc').then(function(attachEntries) {
+		* 		attachEntries.map(function(entry) {
+		*			var a = entry.data;
 		*			// do something with it...
 		* 			if (a.type.indexOf('image') == 0) {
 		*				// show image...
@@ -339,8 +340,9 @@ var LargeLocalStorage = (function(Q) {
 		* Gets all attachments URLs for a document.
 		*
 		* @example
-		* 	storage.getAllAttachmentURLs('exampleDoc').then(function(urls) {
-		*		urls.map(function(u) {
+		* 	storage.getAllAttachmentURLs('exampleDoc').then(function(urlEntries) {
+		*		urlEntries.map(function(entry) {
+		*			var url = entry.url;
 		* 			// do something with the url...
 		* 		})
 		* 	})

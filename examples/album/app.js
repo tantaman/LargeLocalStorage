@@ -49,9 +49,9 @@
 
 		_photoAdded: function(file) {
 			// TOOD: see if already exists??
-			storage.setAttachment('album/' + file.name, file)
+			storage.setAttachment('album', file.name, file)
 			.then(function() {
-				return storage.getAttachmentURL('album/' + file.name);
+				return storage.getAttachmentURL('album', file.name);
 			}).then(this._appendImage);
 		},
 
@@ -89,6 +89,9 @@
 			var self = this;
 			storage.getAllAttachmentURLs('album')
 			.then(function(urls) {
+				urls = urls.map(function(u) {
+					return u.url;
+				});
 				foreach(self._appendImage, urls);
 			});
 		}

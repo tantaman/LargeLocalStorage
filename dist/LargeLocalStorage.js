@@ -231,15 +231,23 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = path + "-attachments";
+			var attachmentsDir = docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
 				var reader = entry.createReader();
 				deferred.resolve(
-					utils.mapAsync(entryToFile, readDirEntries(reader, [])));
+					utils.mapAsync(function(entry, cb, eb) {
+						entry.file(function(file) {
+							cb({
+								data: file,
+								docKey: docKey,
+								attachKey: entry.name
+							});
+						}, eb);
+					}, readDirEntries(reader, [])));
 			}, function(err) {
 				deferred.reject(err);
 			});
@@ -247,15 +255,22 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = path + "-attachments";
+			var attachmentsDir = docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
 				var reader = entry.createReader();
 				readDirEntries(reader, []).then(function(entries) {
-					deferred.resolve(entries.map(entryToURL));
+					deferred.resolve(entries.map(
+					function(entry) {
+						return {
+							url: entry.toURL(),
+							docKey: docKey,
+							attachKey: entry.name
+						};
+					}));
 				});
 			}, function(err) {
 				deferred.reject(err);
@@ -475,7 +490,11 @@ var IndexedDBProvider = (function(Q) {
 					} else {
 						data = cursor.value.data;
 					}
-					values.push(data);
+					values.push({
+						data: data,
+						docKey: docKey,
+						attachKey: cursor.primaryKey.split('/')[1] // TODO
+					});
 					cursor.continue();
 				} else {
 					deferred.resolve(values);
@@ -493,7 +512,9 @@ var IndexedDBProvider = (function(Q) {
 			var deferred = Q.defer();
 			this.getAllAttachments(docKey).then(function(attachments) {
 				var urls = attachments.map(function(a) {
-					return URL.createObjectURL(a);
+					a.url = URL.createObjectURL(a.data);
+					delete a.data;
+					return a;
 				});
 
 				deferred.resolve(urls);
@@ -726,14 +747,19 @@ var WebSQLProvider = (function(Q) {
 			var deferred = Q.defer();
 
 			this._db.transaction(function(tx) {
-				tx.executeSql('SELECT value FROM attachments WHERE fname = ?',
+				tx.executeSql('SELECT value, akey FROM attachments WHERE fname = ?',
 				[fname],
 				function(tx, res) {
 					// TODO: ship this work off to a webworker
 					// since there could be many of these conversions?
 					var result = [];
 					for (var i = 0; i < res.rows.length; ++i) {
-						result.push(dataURLToBlob(res.rows.item(i).value))
+						var item = res.rows.item(i);
+						result.push({
+							docKey: fname,
+							attachKey: item.akey,
+							data: dataURLToBlob(item.value)
+						});
 					}
 
 					deferred.resolve(result);
@@ -749,7 +775,9 @@ var WebSQLProvider = (function(Q) {
 			var deferred = Q.defer();
 			this.getAllAttachments(fname).then(function(attachments) {
 				var urls = attachments.map(function(a) {
-					return URL.createObjectURL(a);
+					a.url = URL.createObjectURL(a.data);
+					delete a.data;
+					return a;
 				});
 
 				deferred.resolve(urls);
@@ -879,13 +907,27 @@ var LargeLocalStorage = (function(Q) {
 	}
 
 	/**
+	 * 
+	 * LargeLocalStorage (or LLS) gives you a large capacity 
+	 * (up to several gig with permission from the user)
+	 * key-value store in the browser.
+	 *
+	 * For storage, LLS uses the [FilesystemAPI](https://developer.mozilla.org/en-US/docs/WebGuide/API/File_System)
+	 * when running in Crome and Opera, 
+	 * [InexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB) in Firefox and IE
+	 * and [WebSQL](http://www.w3.org/TR/webdatabase/) in Safari.
+	 *
+	 * When IndexedDB becomes available in Safari, LLS will
+	 * update to take advantage of that storage implementation.
+	 *
+	 *
 	 * Upon construction a LargeLocalStorage (LLS) object will be 
 	 * immediately returned but not necessarily immediately ready for use.
 	 *
 	 * A LLS object has an `initialized` property which is a promise
 	 * that is resolved when the LLS object is ready for us.
 	 *
-	 * So usage of LLS would typical be:
+	 * Usage of LLS would typically be:
 	 * ```
 	 * var storage = new LargeLocalStorage({size: 75*1024*1024});
 	 * storage.initialized.then(function(grantedCapacity) {
@@ -913,22 +955,28 @@ var LargeLocalStorage = (function(Q) {
 	 * is never ready this could obviously lead to memory issues
 	 * which is why it is not the default behavior.
 	 *
-	 * The config object allows you to specify the desired
-	 * size of the storage in bytes.
+	 * @example
+	 *	var desiredCapacity = 50 * 1024 * 1024; // 50MB
+	 *	var storage = new LargeLocalStorage({
+	 *		size: desiredCapacity
 	 *
-	 * ```
-	 * {
-	 *    size: 75 * 1024 * 1024, // request 75MB
-	 *    
-	 *    // force us to use IndexedDB or WebSQL or the FilesystemAPI
-	 *    // this option is for debugging purposes.
-	 *    forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
-	 * }
-	 * ```
+	 *		// the following is an optional param 
+	 *		// that is useful for debugging.
+	 *		// force LLS to use a specific storage implementation
+	 *
+	 *		// forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
+	 *	});
+	 *	storage.initialized.then(function(capacity) {
+	 *		if (capacity != -1 && capacity != desiredCapacity) {
+	 *			// the user didn't authorize your storage request
+	 *			// so instead you have some limitation on your storage
+	 *		}
+	 *	})
 	 *
 	 * @class LargeLocalStorage
 	 * @constructor
-	 * @param {object} config
+	 * @param {object} config {size: sizeInByes, [forceProvider: force a specific implementation]}
+	 * @return {LargeLocalStorage}
 	 */
 	function LargeLocalStorage(config) {
 		var self = this;
@@ -947,31 +995,17 @@ var LargeLocalStorage = (function(Q) {
 			deferred.reject('No storage provider found');
 		});
 
+		/**
+		* @property {promise} initialized
+		*/
 		this.initialized = deferred.promise;
 	}
 
 	LargeLocalStorage.prototype = {
 		/**
-		* Whether or not the implementation supports attachments.
-		* This will only be true except in the case
-		* that WebSQL, IndexedDB, and FilesystemAPI are
-		* all not present in the browser.
-		* In that case LLS falls back to regular
-		* old DOMStorage (or LocalStorage).
-		*
-		* You can still store attachments via DOMStorage but it
-		* isn't advisable due to the space limit (2.5mb or 5.0mb
-		* depending on the browser)
-		* 
-		* @method supportsAttachments
-		*/
-		supportsAttachments: function() {
-			this._checkAvailability();
-			return this._impl.supportsAttachments();
-		},
-
-		/**
-		* Whether or not LLS is ready to store data
+		* Whether or not LLS is ready to store data.
+		* The `initialized` property can be used to
+		* await initialization.
 		* @method ready
 		*/
 		ready: function() {
@@ -985,6 +1019,11 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* Returns a promise that is fulfilled with
 		* the listing.
+		*
+		* @example
+		*	storage.ls().then(function(docKeys) {
+		*		console.log(docKeys);
+		*	})
 		*
 		* @method ls
 		* @param {string} [docKey]
@@ -1012,8 +1051,6 @@ var LargeLocalStorage = (function(Q) {
 		* @returns {promise}
 		*/
 		rm: function(docKey) {
-			// check for attachments on this path
-			// delete attachments in the storage as well.
 			this._checkAvailability();
 			return this._impl.rm(docKey);
 		},
@@ -1131,8 +1168,9 @@ var LargeLocalStorage = (function(Q) {
 		* Gets all of the attachments for a document.
 		*
 		* @example
-		* 	storage.getAllAttachments('exampleDoc').then(function(attachments) {
-		* 		attachments.map(function(a) {
+		* 	storage.getAllAttachments('exampleDoc').then(function(attachEntries) {
+		* 		attachEntries.map(function(entry) {
+		*			var a = entry.data;
 		*			// do something with it...
 		* 			if (a.type.indexOf('image') == 0) {
 		*				// show image...
@@ -1157,8 +1195,9 @@ var LargeLocalStorage = (function(Q) {
 		* Gets all attachments URLs for a document.
 		*
 		* @example
-		* 	storage.getAllAttachmentURLs('exampleDoc').then(function(urls) {
-		*		urls.map(function(u) {
+		* 	storage.getAllAttachmentURLs('exampleDoc').then(function(urlEntries) {
+		*		urlEntries.map(function(entry) {
+		*			var url = entry.url;
 		* 			// do something with the url...
 		* 		})
 		* 	})
@@ -1218,8 +1257,24 @@ var LargeLocalStorage = (function(Q) {
 
 		/**
 		* Returns the actual capacity of the storage or -1
-		* if it is unknown.
-		* // TODO: return an estimated capacity if actual capacity is unknown.
+		* if it is unknown.  If the user denies your request for
+		* storage you'll get back some smaller amount of storage than what you
+		* actually requested.
+		*
+		* TODO: return an estimated capacity if actual capacity is unknown?
+		* -Firefox is 50MB until authorized to go above,
+		* -Chrome is some % of available disk space,
+		* -Safari unlimited as long as the user keeps authorizing size increases
+		* -Opera same as safari?
+		*
+		* @example
+		*	// the initialized property will call you back with the capacity
+		* 	storage.initialized.then(function(capacity) {
+		*		console.log('Authorized to store: ' + capacity + ' bytes');
+		* 	});
+		*	// or if you know your storage is already available
+		*	// you can call getCapacity directly
+		*	storage.getCapacity()
 		*
 		* @method getCapacity
 		* @returns {number} Capacity, in bytes, of the storage.  -1 if unknown.
