@@ -20,11 +20,11 @@ var IndexedDBProvider = (function(Q) {
 
 	// TODO: normalize returns and errors.
 	IDB.prototype = {
-		getContents: function(path) {
+		getContents: function(docKey) {
 			var deferred = Q.defer();
 			var transaction = this._db.transaction(['files'], 'readonly');
 
-			var get = transaction.objectStore('files').get(path);
+			var get = transaction.objectStore('files').get(docKey);
 			get.onsuccess = function(e) {
 				deferred.resolve(e.target.result);
 			};
@@ -36,11 +36,11 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		setContents: function(path, data) {
+		setContents: function(docKey, data) {
 			var deferred = Q.defer();
 			var transaction = this._db.transaction(['files'], 'readwrite');
 
-			var put = transaction.objectStore('files').put(data, path);
+			var put = transaction.objectStore('files').put(data, docKey);
 			put.onsuccess = function(e) {
 				deferred.resolve(e);
 			};
@@ -52,13 +52,13 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rm: function(path) {
+		rm: function(docKey) {
 			var deferred = Q.defer();
 			var finalDeferred = Q.defer();
 
 			var transaction = this._db.transaction(['files', 'attachments'], 'readwrite');
 			
-			var del = transaction.objectStore('files').delete(path);
+			var del = transaction.objectStore('files').delete(docKey);
 
 			del.onsuccess = function(e) {
 				deferred.promise.then(function() {
@@ -74,7 +74,7 @@ var IndexedDBProvider = (function(Q) {
 
 			var attachmentsStore = transaction.objectStore('attachments');
 			var index = attachmentsStore.index('fname');
-			var cursor = index.openCursor(IDBKeyRange.only(path));
+			var cursor = index.openCursor(IDBKeyRange.only(docKey));
 			cursor.onsuccess = function(e) {
 				var cursor = e.target.result;
 				if (cursor) {
@@ -92,11 +92,11 @@ var IndexedDBProvider = (function(Q) {
 			return finalDeferred.promise;
 		},
 
-		getAttachment: function(path) {
+		getAttachment: function(docKey, attachKey) {
 			var deferred = Q.defer();
 
 			var transaction = this._db.transaction(['attachments'], 'readonly');
-			var get = transaction.objectStore('attachments').get(path);
+			var get = transaction.objectStore('attachments').get(docKey + '/' + attachKey);
 
 			var self = this;
 			get.onsuccess = function(e) {
@@ -119,14 +119,14 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
 			var self = this;
 
 			var transaction = this._db.transaction(['attachments'], 'readonly');
 			var index = transaction.objectStore('attachments').index('fname');
 
-			var cursor = index.openCursor(IDBKeyRange.only(path));
+			var cursor = index.openCursor(IDBKeyRange.only(docKey));
 			var values = [];
 			cursor.onsuccess = function(e) {
 				var cursor = e.target.result;
@@ -151,9 +151,9 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(docKey) {
 			var deferred = Q.defer();
-			this.getAllAttachments(path).then(function(attachments) {
+			this.getAllAttachments(docKey).then(function(attachments) {
 				var urls = attachments.map(function(a) {
 					return URL.createObjectURL(a);
 				});
@@ -166,9 +166,9 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachmentURL: function(path) {
+		getAttachmentURL: function(docKey, attachKey) {
 			var deferred = Q.defer();
-			this.getAttachment(path).then(function(attachment) {
+			this.getAttachment(docKey, attachKey).then(function(attachment) {
 				deferred.resolve(URL.createObjectURL(attachment));
 			}, function(e) {
 				deferred.reject(e);
@@ -181,8 +181,7 @@ var IndexedDBProvider = (function(Q) {
 			URL.revokeObjectURL(url);
 		},
 
-		setAttachment: function(path, data) {
-			var parts = utils.splitAttachmentPath(path);
+		setAttachment: function(docKey, attachKey, data) {
 			var deferred = Q.defer();
 
 			if (data instanceof Blob && !this._supportsBlobs) {
@@ -196,8 +195,8 @@ var IndexedDBProvider = (function(Q) {
 
 			function continuation(data) {
 				var obj = {
-					path: path,
-					fname: parts[0],
+					path: docKey + '/' + attachKey,
+					fname: docKey,
 					data: data
 				};
 				var transaction = this._db.transaction(['attachments'], 'readwrite');
@@ -215,10 +214,10 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rmAttachment: function(path) {
+		rmAttachment: function(docKey, attachKey) {
 			var deferred = Q.defer();
 			var transaction = this._db.transaction(['attachments'], 'readwrite');
-			var del = transaction.objectStore('attachments').delete(path);
+			var del = transaction.objectStore('attachments').delete(docKey + '/' + attachKey);
 
 			del.onsuccess = function(e) {
 				deferred.resolve(e);

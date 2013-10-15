@@ -9,10 +9,10 @@ var WebSQLProvider = (function(Q) {
 	}
 
 	WSQL.prototype = {
-		getContents: function(path) {
+		getContents: function(docKey) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
-				tx.executeSql('SELECT value FROM files WHERE fname = ?', [path],
+				tx.executeSql('SELECT value FROM files WHERE fname = ?', [docKey],
 				function(tx, res) {
 					if (res.rows.length == 0) {
 						deferred.reject({code: 1});
@@ -27,11 +27,11 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		setContents: function(path, data) {
+		setContents: function(docKey, data) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
 				tx.executeSql(
-				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [path, data]);
+				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [docKey, data]);
 			}, function(err) {
 				deferred.reject(err);
 			}, function() {
@@ -41,11 +41,11 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rm: function(path) {
+		rm: function(docKey) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
-				tx.executeSql('DELETE FROM files WHERE fname = ?', [path]);
-				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [path]);
+				tx.executeSql('DELETE FROM files WHERE fname = ?', [docKey]);
+				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [docKey]);
 			}, function(err) {
 				deferred.reject(err);
 			}, function() {
@@ -55,10 +55,7 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachment: function(path) {
-			var parts = utils.splitAttachmentPath(path);
-			var fname = parts[0];
-			var akey = parts[1];
+		getAttachment: function(fname, akey) {
 			var deferred = Q.defer();
 
 			this._db.transaction(function(tx){ 
@@ -78,9 +75,9 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAttachmentURL: function(path) {
+		getAttachmentURL: function(docKey, attachKey) {
 			var deferred = Q.defer();
-			this.getAttachment(path).then(function(blob) {
+			this.getAttachment(docKey, attachKey).then(function(blob) {
 				deferred.resolve(URL.createObjectURL(blob));
 			}, function() {
 				deferred.reject();
@@ -89,12 +86,12 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachments: function(path) {
+		getAllAttachments: function(fname) {
 			var deferred = Q.defer();
 
 			this._db.transaction(function(tx) {
 				tx.executeSql('SELECT value FROM attachments WHERE fname = ?',
-				[path],
+				[fname],
 				function(tx, res) {
 					// TODO: ship this work off to a webworker
 					// since there could be many of these conversions?
@@ -112,9 +109,9 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		getAllAttachmentURLs: function(path) {
+		getAllAttachmentURLs: function(fname) {
 			var deferred = Q.defer();
-			this.getAllAttachments(path).then(function(attachments) {
+			this.getAllAttachments(fname).then(function(attachments) {
 				var urls = attachments.map(function(a) {
 					return URL.createObjectURL(a);
 				});
@@ -131,10 +128,7 @@ var WebSQLProvider = (function(Q) {
 			URL.revokeObjectURL(url);
 		},
 
-		setAttachment: function(path, data) {
-			var parts = utils.splitAttachmentPath(path);
-			var fname = parts[0];
-			var akey = parts[1];
+		setAttachment: function(fname, akey, data) {
 			var deferred = Q.defer();
 
 			var self = this;
@@ -153,10 +147,7 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		rmAttachment: function(path) {
-			var parts = utils.splitAttachmentPath(path);
-			var fname = parts[0];
-			var akey = parts[1];
+		rmAttachment: function(fname, akey) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
 				tx.executeSql('DELETE FROM attachments WHERE fname = ? AND akey = ?',

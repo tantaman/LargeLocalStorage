@@ -1,8 +1,0 @@
-{
-  "name": "LargeLocalStorage",
-	"devDependencies": {
-		"jquery": "2.0.3",
-		"q": "0.9.7",
-		"bootstrap": "3.0.0"
-	}
-}

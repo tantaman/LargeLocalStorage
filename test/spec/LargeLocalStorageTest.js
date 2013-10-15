@@ -1,7 +1,7 @@
 (function(lls) {
 	var storage = new lls({
 		size: 10 * 1024 * 1024
-		// forceProvider: 'WebSQL' // force a desired provider.
+		// forceProvider: 'IndexedDB' // force a desired provider.
 	});
 
 	storage.initialized.then(function() {
@@ -100,9 +100,9 @@
 		it('Allows attachments to be written, read', function(done) {
 			getAttachment("elephant.jpg", function(blob) {
 				storage.setContents("testfile4", "file...").then(function() {
-					return storage.setAttachment("testfile4/ele", blob);
+					return storage.setAttachment("testfile4", "ele", blob);
 				}).then(function() {
-					return storage.getAttachment("testfile4/ele");
+					return storage.getAttachment("testfile4", "ele");
 				}).then(function(attach) {
 					expect(attach instanceof Blob).to.equal(true);
 					done();
@@ -117,7 +117,7 @@
 		// Apparently these tests are being run sequentially...
 		// so taking advantage of that...
 		it('Allows us to get attachments as urls', function(done) {
-			storage.getAttachmentURL("testfile4/ele").then(function(url) {
+			storage.getAttachmentURL("testfile4", "ele").then(function(url) {
 				// urls are pretty opaque since they could be from
 				// filesystem api, indexeddb, or websql
 				expect(typeof url === 'string').to.equal(true);
@@ -130,7 +130,7 @@
 		});
 
 		it('Allows attachments to be deleted', function(done) {
-			storage.rmAttachment("testfile4/ele").then(function() {
+			storage.rmAttachment("testfile4", "ele").then(function() {
 				done();
 			}).catch(function(err) {
 				fail(err);
@@ -141,19 +141,19 @@
 		it('Removes all attachments when removing a file', function(done) {
 			getAttachment("pie.jpg", function(blob) {
 				storage.setContents("testfile5", "fileo").then(function() {
-					return storage.setAttachment("testfile5/pie", blob);
+					return storage.setAttachment("testfile5", "pie", blob);
 				}).then(function() {
-					return storage.setAttachment("testfile5/pie2", blob);
+					return storage.setAttachment("testfile5", "pie2", blob);
 				}).then(function() {
 					return storage.rm("testfile5");
 				}).then(function() {
-					return storage.getAttachment("testfile5/pie");
+					return storage.getAttachment("testfile5", "pie");
 				}).then(function() {
 					fail();
 					done();
 				}).catch(function(err) {
 					expect(err != null).to.equal(true);
-					storage.getAttachment("testfile5/pie2")
+					storage.getAttachment("testfile5", "pie2")
 					.then(function(a) {
 						fail(a);
 						done();
@@ -181,8 +181,8 @@
 
 			function continuation(blob1, blob2) {
 				Q.all([
-					storage.setAttachment("testfile6/blob1", blob1),
-					storage.setAttachment("testfile6/blob2", blob2)
+					storage.setAttachment("testfile6", "blob1", blob1),
+					storage.setAttachment("testfile6", "blob2", blob2)
 				]).then(function() {
 					return storage.getAllAttachments("testfile6");
 				}).then(function(attachments) {

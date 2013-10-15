@@ -32,6 +32,7 @@
 		this.$el.on('dragover', copyDragover);
 		this.$el.on('drop', this._drop);
 		this.$thumbs = this.$el.find('.thumbnails');
+		this.$usage = this.$el.find('.usage');
 
 		this._renderExistingPhotos();
 	}
@@ -55,18 +56,41 @@
 		},
 
 		_appendImage: function(url) {
-			// TODO: correctly scale the img (preserving aspect ratio)
-			this.$thumbs.append('<div class="col-sm-6 col-md-3">' +
-				'<img src="' + url + '" style="width: 171px; height: 180px"></img>' +
-				'</div>');
+			if (this.$usage) {
+				this.$usage.remove();
+				this.$usage = null;
+			}
+			var container = $('<div class="col-sm-6 col-md-3"></div>');
+			var image = new Image();
+			image.src = url;
+			var self = this;
+			image.onload = function() {
+				var scale = 171 / image.naturalWidth;
+				
+				var newHeight = scale * image.naturalHeight;
+				if (newHeight > 180) {
+					scale = 180 / image.naturalHeight;
+					newHeight = 180;
+				}
+
+				var newWidth = scale * image.naturalWidth;
+
+				image.width = newWidth;
+				image.height = newHeight;
+
+				container.append(image);
+				self.$thumbs.append(container);
+			};
+
 			storage.revokeAttachmentURL(url);
 		},
 
 		_renderExistingPhotos: function() {
-			// storage.getAllAttachmentURLs('album/')
-			// .then(function(urls) {
-			// 	foreach(this._appendImage, urls);
-			// });
+			var self = this;
+			storage.getAllAttachmentURLs('album')
+			.then(function(urls) {
+				foreach(self._appendImage, urls);
+			});
 		}
 	};
 
