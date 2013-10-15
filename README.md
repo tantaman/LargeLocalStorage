@@ -10,7 +10,7 @@ To make things worse:
 * Safari doesn't support IndexedDB,
 * IE and Firefox both support IndexedDB but not the FilesystemAPI.
 
-`LargeLocalStorage` bridges all of that to give you a large (several hundred MB) key-value store in the browser
+`LargeLocalStorage` bridges all of that to give you a large capacity (up to several GB when authorized by the user) key-value store in the browser
 (IE 10, Chrome, Safari 6+, Firefox, Opera). 
 
 * Run the [tests](http://tantaman.github.io/LargeLocalStorage/test/)
