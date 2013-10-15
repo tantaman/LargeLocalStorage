@@ -1,30 +1,63 @@
 LargeLocalStorage.URLCache = (function() {
 
-	function add(cache, path, url) {
-		var parts = path.split('/');
+	function add(cache, docKey, attachKey, url) {
+		var mainCache = cache.main;
+		var docCache = mainCache[docKey];
+		if (!docCache) {
+			docCache = {};
+			mainCache[docKey] = docCache;
+		}
+
+		mainCache[attachKey] = url;
+		cache.reverse[url] = {docKey: docKey, attachKey: attachKey};
 	}
 
-	function expunge(cache, path) {
+	function addAll(cache, urlEntries) {
+		for (var i = 0; i < urlEntries.length; ++i) {
+			add(cache, entry.docKey, entry.attachKey, entry.url);
+		}
+	}
 
+	function expunge(cache, docKey, attachKey) {
+		if (attachKey) {
+			var docCache = cache.main[docKey];
+			if (docCache) {
+				var url = docCache[attachKey];
+				delete docCache[attachKey];
+				delete cache.reverse[url];
+			}
+		} else {
+			var docCache = cache.main[docKey];
+			if (docCache) {
+				for (var attachKey in docCache) {
+					var url = docCache[attachKey];
+					delete docCache[attachKey];
+					delete cache.reverse[url];
+				}
+			}
+		}
 	}
 
 	function expungByUrl(cache, url) {
-
+		var keys = cache.reverse[url];
+		if (keys) {
+			expunge(cache, keys.docKey, keys.attachKey);
+		}
 	}
 
-	function setAttachment(path, blob) {
-		expunge(this._cache, path);
+	function setAttachment(docKey, attachKey, blob) {
+		expunge(this._cache, docKey, attachKey);
 		return this._lls.setAttachment(path, blob);
 	}
 
-	function rmAttachment(path) {
-		expunge(this._cache, path);
-		return this._lls.rmAttachment(path);
+	function rmAttachment(docKey, attachKey) {
+		expunge(this._cache, docKey, attachKey);
+		return this._lls.rmAttachment(docKey, attachKey);
 	}
 
-	function rm(path) {
-		delete this._cache[path];
-		return this._lls.rm(path);
+	function rm(docKey) {
+		expunge(this._cache, docKey);
+		return this._lls.rm(docKey);
 	}
 
 	function revokeAttachmentURL(url) {
@@ -32,20 +65,20 @@ LargeLocalStorage.URLCache = (function() {
 		return this._lls.revokeAttachmentURL(url);
 	}
 
-	function getAttachmentURL(path) {
-		var promise = this._lls.getAttachmentURL(path);
+	function getAttachmentURL(docKey, attachKey) {
+		var promise = this._lls.getAttachmentURL(docKey, attachKey);
 		promise.then(function(url) {
-			add(this._cache, path, url);
+			add(this._cache, docKey, attachKey, url);
 		});
 
 		return promise;
 	}
 
-	function getAllAttachmentURLs(path) {
-		var promise = this._lls.getAllAttachmentURLs(path);
+	function getAllAttachmentURLs(docKey) {
+		var promise = this._lls.getAllAttachmentURLs(docKey);
 		promise.then(function(urls) {
 			// TODO: the return will have to be a urls,paths pair...
-			addAll(this._cache, path, urls);
+			addAll(this._cache, urls);
 		});
 
 		return promise;
