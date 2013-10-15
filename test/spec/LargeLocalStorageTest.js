@@ -1,7 +1,7 @@
 (function(lls) {
 	var storage = new lls({
 		size: 10 * 1024 * 1024
-		// forceProvider: 'WebSQL' // force a desired provider.
+		// forceProvider: 'IndexedDB' // force a desired provider.
 	});
 
 	function fail(err) {
@@ -192,6 +192,18 @@
 				fail(e);
 				done();
 			});
+		});
+
+		it('Allows us to empty out the entire storage', function() {
+
+		});
+
+		it('Allows us to ls the attachments on a document', function() {
+
+		});
+
+		it('Allows us to ls for all docs', function() {
+
 		});
 	});
 

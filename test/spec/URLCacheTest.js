@@ -9,6 +9,7 @@
 	var storage = new lls({size: 10 * 1024 * 1024});
 	var cacheObj = LargeLocalStorage.URLCache._applyTo(storage)._cache;
 
+	function loadTests() {
 	describe('URLCache', function() {
 		it('Caches getAttachmentURL operations',
 		function(done) {
@@ -62,7 +63,9 @@
 
 		// });
 	});
+	}
 
+	//loadTests();
 	storage.initialized.then(function() {
 		window.runMocha();
 	});

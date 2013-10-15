@@ -238,7 +238,7 @@ var IndexedDBProvider = (function(Q) {
 	};
 
 	return {
-		init: function() {
+		init: function(config) {
 			var deferred = Q.defer();
 
 			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
@@ -250,7 +250,7 @@ var IndexedDBProvider = (function(Q) {
 				return deferred.promise;
 			}
 
-			var request = indexedDB.open("largelocalstorage", dbVersion);
+			var request = indexedDB.open(config.name, dbVersion);
 
 			function createObjectStore(db) {
 				db.createObjectStore("files");

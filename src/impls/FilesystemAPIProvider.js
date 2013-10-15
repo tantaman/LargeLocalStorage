@@ -47,15 +47,17 @@ var FilesystemAPIProvider = (function(Q) {
 		return entry.toURL();
 	}
 
-	function FSAPI(fs, numBytes) {
+	function FSAPI(fs, numBytes, prefix) {
 		this._fs = fs;
 		this._capacity = numBytes;
+		this._prefix = prefix;
 		this.type = "FilesystemAPI";
 	}
 
 	FSAPI.prototype = {
 		getContents: function(path) {
 			var deferred = Q.defer();
+			path = this._prefix + path;
 			this._fs.root.getFile(path, {}, function(fileEntry) {
 				fileEntry.file(function(file) {
 					var reader = new FileReader();
@@ -77,6 +79,7 @@ var FilesystemAPIProvider = (function(Q) {
 		setContents: function(path, data) {
 			var deferred = Q.defer();
 
+			path = this._prefix + path;
 			this._fs.root.getFile(path, {create:true}, function(fileEntry) {
 				fileEntry.createWriter(function(fileWriter) {
 					var blob;
@@ -102,11 +105,16 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
+		ls: function(docKey) {
+
+		},
+
 		rm: function(path) {
 			var deferred = Q.defer();
 			var finalDeferred = Q.defer();
 
 			// remove attachments that go along with the path
+			path = this._prefix + path;
 			var attachmentsDir = path + "-attachments";
 
 			this._fs.root.getFile(path, {create:false},
@@ -135,7 +143,7 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		getAttachment: function(docKey, attachKey) {
-			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
+			var attachmentPath = this._prefix + getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
@@ -148,7 +156,7 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		getAttachmentURL: function(docKey, attachKey) {
-			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
+			var attachmentPath = this._prefix + getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			var url = 'filesystem:' + window.location.protocol + '//' + window.location.host + '/persistent/' + attachmentPath;
@@ -162,7 +170,7 @@ var FilesystemAPIProvider = (function(Q) {
 
 		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = docKey + "-attachments";
+			var attachmentsDir = this._prefix + docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
@@ -186,7 +194,7 @@ var FilesystemAPIProvider = (function(Q) {
 
 		getAllAttachmentURLs: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = docKey + "-attachments";
+			var attachmentsDir = this._prefix + docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
@@ -222,7 +230,8 @@ var FilesystemAPIProvider = (function(Q) {
 			var deferred = Q.defer();
 
 			var self = this;
-			this._fs.root.getDirectory(attachInfo.dir, {create:true}, function(dirEntry) {
+			this._fs.root.getDirectory(this._prefix + attachInfo.dir,
+			{create:true}, function(dirEntry) {
 				deferred.resolve(self.setContents(attachInfo.path, data));
 			}, makeErrorHandler(deferred, "getting attachment dir"));
 
@@ -234,7 +243,7 @@ var FilesystemAPIProvider = (function(Q) {
 			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
-			this._fs.root.getFile(attachmentPath, {create:false},
+			this._fs.root.getFile(this._prefix + attachmentPath, {create:false},
 				function(entry) {
 					entry.remove(function() {
 						deferred.resolve();
@@ -260,19 +269,27 @@ var FilesystemAPIProvider = (function(Q) {
 				return deferred.promise;
 			}
 
+			var prefix = config.name + '/';
+
 			persistentStorage.requestQuota(config.size,
 			function(numBytes) {
 				requestFileSystem(window.PERSISTENT, numBytes,
 				function(fs) {
-					deferred.resolve(new FSAPI(fs, numBytes));
+					fs.root.getDirectory(config.name, {create: true},
+					function() {
+						deferred.resolve(new FSAPI(fs, numBytes, prefix));
+					}, function(err) {
+						console.error(err);
+						deferred.reject(err);
+					});
 				}, function(err) {
 					// TODO: implement various error messages.
-					console.log(err);
+					console.error(err);
 					deferred.reject(err);
 				});
 			}, function(err) {
 				// TODO: implement various error messages.
-				console.log(err);
+				console.error(err);
 				deferred.reject(err);
 			});
 

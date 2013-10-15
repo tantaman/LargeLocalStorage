@@ -14,6 +14,9 @@ LargeLocalStorage.URLCache = (function() {
 	// so we don't befuddle the original object.
 
 	function add(cache, docKey, attachKey, url) {
+		if (cache.options.manageRevocation)
+			this.expunge(cache, docKey, attachKey);
+
 		var mainCache = cache.main;
 		var docCache = mainCache[docKey];
 		if (!docCache) {
@@ -27,68 +30,83 @@ LargeLocalStorage.URLCache = (function() {
 
 	function addAll(cache, urlEntries) {
 		urlEntries.forEach(function(entry) {
-			add(cache, entry.docKey, entry.attachKey, entry.url);
-		})
+			this.add(cache, entry.docKey, entry.attachKey, entry.url);
+		}, this);
 	}
 
 	function expunge(cache, docKey, attachKey) {
-		if (attachKey) {
-			var docCache = cache.main[docKey];
-			if (docCache) {
-				var url = docCache[attachKey];
-				delete docCache[attachKey];
-				delete cache.reverse[url];
-			}
-		} else {
-			var docCache = cache.main[docKey];
-			if (docCache) {
+		function delAndRevoke(attachKey) {
+			var url = docCache[attachKey];
+			delete docCache[attachKey];
+			delete cache.reverse[url];
+			if (cache.option.manageRevocation)
+				this.revokeAttachmentURL(url);
+		}
+
+		var docCache = cache.main[docKey];
+		if (docCache) {
+			if (attachKey) {
+				delAndRevoke.call(this, attachKey);
+			} else {
 				for (var attachKey in docCache) {
-					var url = docCache[attachKey];
-					delete docCache[attachKey];
-					delete cache.reverse[url];
+					delAndRevoke.call(this, attachKey);
 				}
+				delete cache.main[docKey];
 			}
 		}
 	}
 
-	function expungByUrl(cache, url) {
+	function expungeByUrl(cache, url) {
 		var keys = cache.reverse[url];
 		if (keys) {
-			expunge(cache, keys.docKey, keys.attachKey);
+			this.expunge(cache, keys.docKey, keys.attachKey);
 		}
 	}
 
 
 	function setAttachment(docKey, attachKey, blob) {
-		expunge(this._cache, docKey, attachKey);
+		this.expunge(this._cache, docKey, attachKey);
 		return this.setAttachment.call(this._lls, docKey, attachKey, blob);
 	}
 
 	function rmAttachment(docKey, attachKey) {
-		expunge(this._cache, docKey, attachKey);
+		this.expunge(this._cache, docKey, attachKey);
 		return this.rmAttachment.call(this._lls, docKey, attachKey);
 	}
 
 	function rm(docKey) {
-		expunge(this._cache, docKey);
+		this.expunge(this._cache, docKey);
 		return this.rm.call(this._lls, docKey);
 	}
 
 	function revokeAttachmentURL(url) {
-		expungByUrl(this._cache, url);
+		this.expungeByUrl(this._cache, url);
 		return this.revokeAttachmentURL.call(this._lls, url);
 	}
 
 	function getAttachmentURL(docKey, attachKey) {
+		var pendingKey = docKey + attachKey;
+		var pending = this._pending[pendingKey];
+		if (pending)
+			return pending;
+
 		var promise = this.getAttachmentURL.call(this._lls, docKey, attachKey);
 		var self = this;
 		promise.then(function(url) {
 			add(self._cache, docKey, attachKey, url);
+			delete self._pending[pendingKey];
 		});
+
+		this._pending[pendingKey] = promise;
 
 		return promise;
 	}
 
+	// TODO: pending between this and getAttachmentURL...
+	// Execute this as an ls and then
+	// a loop on getAttachmentURL instead???
+	// doing it the way mentiond above
+	// will prevent us from leaking blobs.
 	function getAllAttachmentURLs(docKey) {
 		var promise = this.getAllAttachmentURLs.call(this._lls, docKey);
 		var self = this;
@@ -99,22 +117,40 @@ LargeLocalStorage.URLCache = (function() {
 		return promise;
 	}
 
+	var defaultOptions = {
+		manageRevocation: true
+	};
+
+	function defaults(options, defaultOptions) {
+		for (var k in defaultOptions) {
+			if (options[k] === undefined)
+				options[k] = defaultOptions[k];
+		}
+	}
 
 	return {
-		applyTo: function(lls) {
-			this._applyTo(lls);
+		applyTo: function(lls, options) {
+			this._applyTo(lls, options);
 		},
 
 		// This method is only used by unit tests to verify
 		// the cache.
-		_applyTo: function(lls) {
+		_applyTo: function(lls, options) {
 			var obj = {};
 
 			obj._cache = {
 				main: {},
 				reverse: {}
 			};
+			obj._pending = {};
 			obj._lls = lls;
+
+			obj._cache.options = defaults(options || {}, defaultOptions);
+
+			obj.expunge = expunge;
+			obj.expungeByUrl = expungeByUrl;
+			obj.add = add;
+			obj.addAll = addAll;
 
 			obj.setAttachment = lls.setAttachment;
 			lls.setAttachment = setAttachment.bind(obj);

@@ -118,15 +118,17 @@ var FilesystemAPIProvider = (function(Q) {
 		return entry.toURL();
 	}
 
-	function FSAPI(fs, numBytes) {
+	function FSAPI(fs, numBytes, prefix) {
 		this._fs = fs;
 		this._capacity = numBytes;
+		this._prefix = prefix;
 		this.type = "FilesystemAPI";
 	}
 
 	FSAPI.prototype = {
 		getContents: function(path) {
 			var deferred = Q.defer();
+			path = this._prefix + path;
 			this._fs.root.getFile(path, {}, function(fileEntry) {
 				fileEntry.file(function(file) {
 					var reader = new FileReader();
@@ -148,6 +150,7 @@ var FilesystemAPIProvider = (function(Q) {
 		setContents: function(path, data) {
 			var deferred = Q.defer();
 
+			path = this._prefix + path;
 			this._fs.root.getFile(path, {create:true}, function(fileEntry) {
 				fileEntry.createWriter(function(fileWriter) {
 					var blob;
@@ -173,11 +176,16 @@ var FilesystemAPIProvider = (function(Q) {
 			return deferred.promise;
 		},
 
+		ls: function(docKey) {
+
+		},
+
 		rm: function(path) {
 			var deferred = Q.defer();
 			var finalDeferred = Q.defer();
 
 			// remove attachments that go along with the path
+			path = this._prefix + path;
 			var attachmentsDir = path + "-attachments";
 
 			this._fs.root.getFile(path, {create:false},
@@ -206,7 +214,7 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		getAttachment: function(docKey, attachKey) {
-			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
+			var attachmentPath = this._prefix + getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
@@ -219,7 +227,7 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		getAttachmentURL: function(docKey, attachKey) {
-			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
+			var attachmentPath = this._prefix + getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
 			var url = 'filesystem:' + window.location.protocol + '//' + window.location.host + '/persistent/' + attachmentPath;
@@ -233,7 +241,7 @@ var FilesystemAPIProvider = (function(Q) {
 
 		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = docKey + "-attachments";
+			var attachmentsDir = this._prefix + docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
@@ -257,7 +265,7 @@ var FilesystemAPIProvider = (function(Q) {
 
 		getAllAttachmentURLs: function(docKey) {
 			var deferred = Q.defer();
-			var attachmentsDir = docKey + "-attachments";
+			var attachmentsDir = this._prefix + docKey + "-attachments";
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 			function(entry) {
@@ -293,7 +301,8 @@ var FilesystemAPIProvider = (function(Q) {
 			var deferred = Q.defer();
 
 			var self = this;
-			this._fs.root.getDirectory(attachInfo.dir, {create:true}, function(dirEntry) {
+			this._fs.root.getDirectory(this._prefix + attachInfo.dir,
+			{create:true}, function(dirEntry) {
 				deferred.resolve(self.setContents(attachInfo.path, data));
 			}, makeErrorHandler(deferred, "getting attachment dir"));
 
@@ -305,7 +314,7 @@ var FilesystemAPIProvider = (function(Q) {
 			var attachmentPath = getAttachmentPath(docKey, attachKey).path;
 
 			var deferred = Q.defer();
-			this._fs.root.getFile(attachmentPath, {create:false},
+			this._fs.root.getFile(this._prefix + attachmentPath, {create:false},
 				function(entry) {
 					entry.remove(function() {
 						deferred.resolve();
@@ -331,19 +340,27 @@ var FilesystemAPIProvider = (function(Q) {
 				return deferred.promise;
 			}
 
+			var prefix = config.name + '/';
+
 			persistentStorage.requestQuota(config.size,
 			function(numBytes) {
 				requestFileSystem(window.PERSISTENT, numBytes,
 				function(fs) {
-					deferred.resolve(new FSAPI(fs, numBytes));
+					fs.root.getDirectory(config.name, {create: true},
+					function() {
+						deferred.resolve(new FSAPI(fs, numBytes, prefix));
+					}, function(err) {
+						console.error(err);
+						deferred.reject(err);
+					});
 				}, function(err) {
 					// TODO: implement various error messages.
-					console.log(err);
+					console.error(err);
 					deferred.reject(err);
 				});
 			}, function(err) {
 				// TODO: implement various error messages.
-				console.log(err);
+				console.error(err);
 				deferred.reject(err);
 			});
 
@@ -591,7 +608,7 @@ var IndexedDBProvider = (function(Q) {
 	};
 
 	return {
-		init: function() {
+		init: function(config) {
 			var deferred = Q.defer();
 
 			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
@@ -603,7 +620,7 @@ var IndexedDBProvider = (function(Q) {
 				return deferred.promise;
 			}
 
-			var request = indexedDB.open("largelocalstorage", dbVersion);
+			var request = indexedDB.open(config.name, dbVersion);
 
 			function createObjectStore(db) {
 				db.createObjectStore("files");
@@ -835,7 +852,7 @@ var WebSQLProvider = (function(Q) {
 				return deferred.promise;
 			}
 
-			var db = openDb('largelocalstorage', '1.0', 'large local storage', config.size);
+			var db = openDb(config.name, '1.0', 'large local storage', config.size);
 
 			db.transaction(function(tx) {
 				tx.executeSql('CREATE TABLE IF NOT EXISTS files (fname unique, value)');
@@ -860,6 +877,15 @@ var LargeLocalStorage = (function(Q) {
 	else
 		sessionMeta = {};
 
+	function defaults(options, defaultOptions) {
+		for (var k in defaultOptions) {
+			if (options[k] === undefined)
+				options[k] = defaultOptions[k];
+		}
+
+		return options;
+	}
+
 	function getImpl(type) {
 		switch(type) {
 			case 'FileSystemAPI':
@@ -880,7 +906,15 @@ var LargeLocalStorage = (function(Q) {
 		LocalStorage: LocalStorageProvider
 	}
 
+	var defaultConfig = {
+		size: 10 * 1024 * 1024,
+		name: 'lls'
+	};
+
 	function selectImplementation(config) {
+		if (!config) config = {};
+		config = defaults(config, defaultConfig);
+
 		if (config.forceProvider) {
 			return providers[config.forceProvider].init(config);
 		}
@@ -958,12 +992,18 @@ var LargeLocalStorage = (function(Q) {
 	 * @example
 	 *	var desiredCapacity = 50 * 1024 * 1024; // 50MB
 	 *	var storage = new LargeLocalStorage({
-	 *		size: desiredCapacity
+	 *		// desired capacity, in bytes.
+	 *		size: desiredCapacity,
+	 *
+	 * 		// optional name for your LLS database. Defaults to lls.
+	 *		// This is the name given to the underlying
+	 *		// IndexedDB or WebSQL DB or FSAPI Folder.
+	 *		// LLS's with different names are independent.
+	 *		name: 'myStorage'
 	 *
 	 *		// the following is an optional param 
 	 *		// that is useful for debugging.
 	 *		// force LLS to use a specific storage implementation
-	 *
 	 *		// forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
 	 *	});
 	 *	storage.initialized.then(function(capacity) {
@@ -1035,7 +1075,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method ls
 		* @param {string} [docKey]
-		* @returns {promise} resolved with the listing
+		* @returns {promise} resolved with the listing, rejected if the listing fails.
 		*/
 		ls: function(docKey) {
 			this._checkAvailability();
@@ -1049,6 +1089,17 @@ var LargeLocalStorage = (function(Q) {
 		* Returns a promise that is fulfilled when the
 		* removal completes.
 		*
+		* If no docKey is specified, this throws an error.
+		*
+		* To remove all files in LargeLocalStorage call
+		* `lls.empty();`
+		*
+		* To remove all attachments that were written without
+		* a docKey, call `lls.rm('__emptydoc__');`
+		*
+		* rm works this way to ensure you don't lose
+		* data due to an accidently undefined variable.
+		*
 		* @example
 		* 	stoarge.rm('exampleDoc').then(function() {
 		*		alert('doc and all attachments were removed');
@@ -1056,11 +1107,27 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method rm
 		* @param {string} docKey
-		* @returns {promise} resolved when removal completes
+		* @returns {promise} resolved when removal completes, rejected if the removal fails.
 		*/
 		rm: function(docKey) {
 			this._checkAvailability();
 			return this._impl.rm(docKey);
+		},
+
+		/**
+		* An explicit way to remove all documents and
+		* attachments from LargeLocalStorage.
+		*
+		* @example
+		*	storage.empty().then(function() {
+		*		alert('all data has been removed');
+		*	});
+		* 
+		* @returns {promise} resolve when empty completes, rejected if empty fails.
+		*/
+		empty: function() {
+			this._checkAvailability();
+			return this._impl.empty();
 		},
 
 		/**
@@ -1113,13 +1180,13 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method getAttachment
-		* @param {string} [docKey] Defaults to __nodoc__
+		* @param {string} [docKey] Defaults to `__emptydoc__`
 		* @param {string} attachKey key of the attachment
 		* @returns {promise} fulfilled with the attachment or
 		* rejected if it could not be found.  code: 1
 		*/
 		getAttachment: function(docKey, attachKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAttachment(docKey, attachKey);
 		},
@@ -1134,14 +1201,14 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method setAttachment
-		* @param {string} [docKey] Defaults to __nodoc__
+		* @param {string} [docKey] Defaults to `__emptydoc__`
 		* @param {string} attachKey key for the attachment
 		* @param {any} attachment data
 		* @returns {promise} resolved when the write completes.  Rejected
 		* if an error occurs.
 		*/
 		setAttachment: function(docKey, attachKey, data) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.setAttachment(docKey, attachKey, data);
 		},
@@ -1162,12 +1229,12 @@ var LargeLocalStorage = (function(Q) {
 		* lower level details to improve performance.
 		*
 		* @method getAttachmentURL
-		* @param {string} [docKey] Identifies the document.  Defaults to __nodoc__
+		* @param {string} [docKey] Identifies the document.  Defaults to `__emptydoc__`
 		* @param {string} attachKey Identifies the attachment.
 		* @returns {promose} promise that is resolved with the attachment url.
 		*/
 		getAttachmentURL: function(docKey, attachKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAttachmentURL(docKey, attachKey);
 		},
@@ -1189,12 +1256,12 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method getAllAttachments
-		* @param {string} [docKey] Identifies the document.  Defaults to __nodoc__
+		* @param {string} [docKey] Identifies the document.  Defaults to `__emptydoc__`
 		* @returns {promise} Promise that is resolved with all of the attachments for
 		* the given document.
 		*/
 		getAllAttachments: function(docKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAllAttachments(docKey);
 		},
@@ -1211,12 +1278,12 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method getAllAttachmentURLs
-		* @param {string} [docKey] Identifies the document.  Defaults to the __nodoc__ document.
+		* @param {string} [docKey] Identifies the document.  Defaults to the `__emptydoc__` document.
 		* @returns {promise} Promise that is resolved with all of the attachment
 		* urls for the given doc.
 		*/
 		getAllAttachmentURLs: function(docKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAllAttachmentURLs(docKey);
 		},
@@ -1260,7 +1327,7 @@ var LargeLocalStorage = (function(Q) {
 		* @returns {promise} Promise that is resolved once the remove completes
 		*/
 		rmAttachment: function(docKey, attachKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.rmAttachment(docKey, attachKey);
 		},

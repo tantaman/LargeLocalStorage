@@ -178,7 +178,7 @@ var WebSQLProvider = (function(Q) {
 				return deferred.promise;
 			}
 
-			var db = openDb('largelocalstorage', '1.0', 'large local storage', config.size);
+			var db = openDb(config.name, '1.0', 'large local storage', config.size);
 
 			db.transaction(function(tx) {
 				tx.executeSql('CREATE TABLE IF NOT EXISTS files (fname unique, value)');
