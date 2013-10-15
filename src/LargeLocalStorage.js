@@ -220,7 +220,7 @@ var LargeLocalStorage = (function(Q) {
 		* If no docKey is specified, this throws an error.
 		*
 		* To remove all files in LargeLocalStorage call
-		* `lls.empty();`
+		* `lls.clear();`
 		*
 		* To remove all attachments that were written without
 		* a docKey, call `lls.rm('__emptydoc__');`
@@ -247,15 +247,15 @@ var LargeLocalStorage = (function(Q) {
 		* attachments from LargeLocalStorage.
 		*
 		* @example
-		*	storage.empty().then(function() {
+		*	storage.clear().then(function() {
 		*		alert('all data has been removed');
 		*	});
 		* 
-		* @returns {promise} resolve when empty completes, rejected if empty fails.
+		* @returns {promise} resolve when clear completes, rejected if clear fails.
 		*/
-		empty: function() {
+		clear: function() {
 			this._checkAvailability();
-			return this._impl.empty();
+			return this._impl.clear();
 		},
 
 		/**

@@ -106,7 +106,63 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		ls: function(docKey) {
+			var isRoot = false;
+			if (!docKey) {docKey = this._prefix; isRoot = true;}
+			else docKey = this._prefix + docKey + "-attachments";
 
+			var deferred = Q.defer();
+
+			this._fs.root.getDirectory(docKey, {create:false},
+			function(entry) {
+				var reader = entry.createReader();
+				readDirEntries(reader, []).then(function(entries) {
+					deferred.resolve(entries.map(function(entry) {
+						if (isRoot && entry.isDirectory) {
+							return entry.name.replace('-attachments', '');
+						} else {
+							return entry.name;
+						}
+					}));
+				});
+			}, function(error) {
+				deferred.reject(error);
+			});
+
+			return deferred.promise;
+		},
+
+		clear: function() {
+			var deferred = Q.defer();
+			var failed = false;
+			var ecb = function(err) {
+				failed = true;
+				deferred.reject(err);
+			}
+
+			this._fs.root.getDirectory(this._prefix, {},
+			function(entry) {
+				var reader = entry.createReader();
+				reader.readEntries(function(entries) {
+					var latch = 
+					utils.countdown(entries.length, function() {
+						if (!failed)
+							deferred.resolve();
+					});
+
+					entries.forEach(function(entry) {
+						if (entry.isDirectory) {
+							entry.removeRecursively(latch, ecb);
+						} else {
+							entry.remove(latch, ecb);
+						}
+					});
+
+					if (entries.length == 0)
+						deferred.resolve();
+				}, ecb);
+			}, ecb);
+
+			return deferred.promise;
 		},
 
 		rm: function(path) {
@@ -120,7 +176,9 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getFile(path, {create:false},
 				function(entry) {
 					entry.remove(function() {
-						finalDeferred.resolve(deferred);
+						finalDeferred.resolve();
+					}, function(err) {
+						finalDeferred.reject(err);
 					});
 				},
 				makeErrorHandler(finalDeferred, "getting file entry"));
@@ -129,6 +187,8 @@ var FilesystemAPIProvider = (function(Q) {
 				function(entry) {
 					entry.removeRecursively(function() {
 						deferred.resolve();
+					}, function(err) {
+						deferred.reject(err);
 					});
 				},
 				function(err) {
@@ -139,7 +199,7 @@ var FilesystemAPIProvider = (function(Q) {
 					}
 			});
 
-			return finalDeferred.promise;
+			return Q.all([deferred, finalDeferred]);
 		},
 
 		getAttachment: function(docKey, attachKey) {

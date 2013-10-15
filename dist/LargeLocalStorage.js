@@ -54,6 +54,17 @@ var utils = (function() {
 			});
 
 			return deferred.promise;
+		},
+
+		countdown: function(n, cb) {
+		    var args = [];
+		    return function() {
+		      for (var i = 0; i < arguments.length; ++i)
+		        args.push(arguments[i]);
+		      n -= 1;
+		      if (n == 0)
+		        cb.apply(this, args);
+		    }
 		}
 	};
 
@@ -177,7 +188,63 @@ var FilesystemAPIProvider = (function(Q) {
 		},
 
 		ls: function(docKey) {
+			var isRoot = false;
+			if (!docKey) {docKey = this._prefix; isRoot = true;}
+			else docKey = this._prefix + docKey + "-attachments";
 
+			var deferred = Q.defer();
+
+			this._fs.root.getDirectory(docKey, {create:false},
+			function(entry) {
+				var reader = entry.createReader();
+				readDirEntries(reader, []).then(function(entries) {
+					deferred.resolve(entries.map(function(entry) {
+						if (isRoot && entry.isDirectory) {
+							return entry.name.replace('-attachments', '');
+						} else {
+							return entry.name;
+						}
+					}));
+				});
+			}, function(error) {
+				deferred.reject(error);
+			});
+
+			return deferred.promise;
+		},
+
+		clear: function() {
+			var deferred = Q.defer();
+			var failed = false;
+			var ecb = function(err) {
+				failed = true;
+				deferred.reject(err);
+			}
+
+			this._fs.root.getDirectory(this._prefix, {},
+			function(entry) {
+				var reader = entry.createReader();
+				reader.readEntries(function(entries) {
+					var latch = 
+					utils.countdown(entries.length, function() {
+						if (!failed)
+							deferred.resolve();
+					});
+
+					entries.forEach(function(entry) {
+						if (entry.isDirectory) {
+							entry.removeRecursively(latch, ecb);
+						} else {
+							entry.remove(latch, ecb);
+						}
+					});
+
+					if (entries.length == 0)
+						deferred.resolve();
+				}, ecb);
+			}, ecb);
+
+			return deferred.promise;
 		},
 
 		rm: function(path) {
@@ -191,7 +258,9 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getFile(path, {create:false},
 				function(entry) {
 					entry.remove(function() {
-						finalDeferred.resolve(deferred);
+						finalDeferred.resolve();
+					}, function(err) {
+						finalDeferred.reject(err);
 					});
 				},
 				makeErrorHandler(finalDeferred, "getting file entry"));
@@ -200,6 +269,8 @@ var FilesystemAPIProvider = (function(Q) {
 				function(entry) {
 					entry.removeRecursively(function() {
 						deferred.resolve();
+					}, function(err) {
+						deferred.reject(err);
 					});
 				},
 				function(err) {
@@ -210,7 +281,7 @@ var FilesystemAPIProvider = (function(Q) {
 					}
 			});
 
-			return finalDeferred.promise;
+			return Q.all([deferred, finalDeferred]);
 		},
 
 		getAttachment: function(docKey, attachKey) {
@@ -489,6 +560,67 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
+		ls: function(docKey) {
+			var deferred = Q.defer();
+
+			if (!docKey) {
+				// list docs
+				var store = 'files';
+			} else {
+				// list attachments
+				var store = 'attachments';
+			}
+
+			var transaction = this._db.transaction([store], 'readonly');
+			var cursor = transaction.objectStore(store).openCursor();
+			var listing = [];
+
+			cursor.onsuccess = function(e) {
+				var cursor = e.target.result;
+				if (cursor) {
+					listing.push(cursor.key);
+					cursor.continue();
+				} else {
+					deferred.resolve(listing);
+				}
+			};
+
+			cursor.onerror = function(e) {
+				deferred.reject(e);
+			};
+
+			return deferred.promise;
+		},
+
+		clear: function() {
+			var deferred1 = Q.defer();
+			var deferred2 = Q.defer();
+
+			var t = this._db.transaction(['attachments', 'files'], 'readwrite');
+
+
+			var req1 = t.objectStore('attachments').clear();
+			var req2 = t.objectStore('files').clear();
+
+			req1.onsuccess = function() {
+				deferred1.resolve();
+			};
+
+			req2.onsuccess = function() {
+				deferred2.resolve();
+			};
+
+			req1.onerror = function(err) {
+				deferred1.reject(err);
+			};
+
+			req2.onerror = function(err) {
+				deferred2.reject(err);
+			};
+
+			return Q.all([deferred1, deferred2]);
+		},
+
 		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
 			var self = this;
@@ -758,6 +890,55 @@ var WebSQLProvider = (function(Q) {
 			});
 
 			return deferred.promise;
+		},
+
+		ls: function(docKey) {
+			var deferred = Q.defer();
+
+			var select;
+			var field;
+			if (!docKey) {
+				select = 'SELECT fname FROM files';
+				field = 'fname';
+			} else {
+				select = 'SELECT akey FROM attachments WHERE fname = ?';
+				field = 'akey';
+			}
+
+			this._db.transaction(function(tx) {
+				tx.executeSql(select, docKey ? [docKey] : [],
+				function(tx, res) {
+					var listing = [];
+					for (var i = 0; i < res.rows.length; ++i) {
+						listing.push(res.row.item(i)[field]);
+					}
+
+					deferred.resolve(listing);
+				}, function(err) {
+					deferred.reject(err);
+				});
+			});
+
+			return deferred.promise;
+		},
+
+		clear: function() {
+			var deffered1 = Q.defer();
+			var deffered2 = Q.defer();
+
+			this._db.transaction(function(tx) {
+				tx.executeSql('DELETE FROM files', function() {
+					deffered1.resolve();
+				});
+				tx.executeSql('DELETE FROM attachments', function() {
+					deffered2.resolve();
+				});
+			}, function(err) {
+				deffered1.reject(err);
+				deffered2.reject(err);
+			});
+
+			return Q.all([deffered1, deffered2]);
 		},
 
 		getAllAttachments: function(fname) {
@@ -1092,7 +1273,7 @@ var LargeLocalStorage = (function(Q) {
 		* If no docKey is specified, this throws an error.
 		*
 		* To remove all files in LargeLocalStorage call
-		* `lls.empty();`
+		* `lls.clear();`
 		*
 		* To remove all attachments that were written without
 		* a docKey, call `lls.rm('__emptydoc__');`
@@ -1119,15 +1300,15 @@ var LargeLocalStorage = (function(Q) {
 		* attachments from LargeLocalStorage.
 		*
 		* @example
-		*	storage.empty().then(function() {
+		*	storage.clear().then(function() {
 		*		alert('all data has been removed');
 		*	});
 		* 
-		* @returns {promise} resolve when empty completes, rejected if empty fails.
+		* @returns {promise} resolve when clear completes, rejected if clear fails.
 		*/
-		empty: function() {
+		clear: function() {
 			this._checkAvailability();
-			return this._impl.empty();
+			return this._impl.clear();
 		},
 
 		/**
