@@ -90,14 +90,19 @@ var WebSQLProvider = (function(Q) {
 			var deferred = Q.defer();
 
 			this._db.transaction(function(tx) {
-				tx.executeSql('SELECT value FROM attachments WHERE fname = ?',
+				tx.executeSql('SELECT value, akey FROM attachments WHERE fname = ?',
 				[fname],
 				function(tx, res) {
 					// TODO: ship this work off to a webworker
 					// since there could be many of these conversions?
 					var result = [];
 					for (var i = 0; i < res.rows.length; ++i) {
-						result.push(dataURLToBlob(res.rows.item(i).value))
+						var item = res.rows.item(i);
+						result.push({
+							docKey: fname,
+							attachKey: item.akey,
+							data: dataURLToBlob(item.value)
+						});
 					}
 
 					deferred.resolve(result);
@@ -113,7 +118,9 @@ var WebSQLProvider = (function(Q) {
 			var deferred = Q.defer();
 			this.getAllAttachments(fname).then(function(attachments) {
 				var urls = attachments.map(function(a) {
-					return URL.createObjectURL(a);
+					a.url = URL.createObjectURL(a.data);
+					delete a.data;
+					return a;
 				});
 
 				deferred.resolve(urls);

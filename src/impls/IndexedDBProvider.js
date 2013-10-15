@@ -137,7 +137,11 @@ var IndexedDBProvider = (function(Q) {
 					} else {
 						data = cursor.value.data;
 					}
-					values.push(data);
+					values.push({
+						data: data,
+						docKey: docKey,
+						attachKey: cursor.primaryKey.split('/')[1] // TODO
+					});
 					cursor.continue();
 				} else {
 					deferred.resolve(values);
@@ -155,7 +159,9 @@ var IndexedDBProvider = (function(Q) {
 			var deferred = Q.defer();
 			this.getAllAttachments(docKey).then(function(attachments) {
 				var urls = attachments.map(function(a) {
-					return URL.createObjectURL(a);
+					a.url = URL.createObjectURL(a.data);
+					delete a.data;
+					return a;
 				});
 
 				deferred.resolve(urls);

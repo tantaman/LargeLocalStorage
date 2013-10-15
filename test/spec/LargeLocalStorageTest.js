@@ -1,7 +1,7 @@
 (function(lls) {
 	var storage = new lls({
 		size: 10 * 1024 * 1024
-		// forceProvider: 'IndexedDB' // force a desired provider.
+		// forceProvider: 'WebSQL' // force a desired provider.
 	});
 
 	storage.initialized.then(function() {
@@ -187,6 +187,10 @@
 					return storage.getAllAttachments("testfile6");
 				}).then(function(attachments) {
 					expect(attachments.length).to.equal(2);
+					expect(attachments[0].docKey).to.equal('testfile6');
+					expect(attachments[1].docKey).to.equal('testfile6');
+					expect(attachments[0].attachKey.indexOf('blob')).to.equal(0);
+					expect(attachments[1].attachKey.indexOf('blob')).to.equal(0);
 					done();
 				}).catch(function(err) {
 					fail(err);
@@ -199,7 +203,7 @@
 			storage.getAllAttachmentURLs('testfile6').then(function(urls) {
 				expect(urls.length).to.equal(2);
 				urls.forEach(function(url) {
-					$(document.body).append('<img src="' + url + '"></img>');
+					$(document.body).append('<img src="' + url.url + '"></img>');
 				});
 				done();
 			}, function(e) {

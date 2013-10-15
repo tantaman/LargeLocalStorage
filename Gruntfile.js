@@ -9,7 +9,7 @@ module.exports = function (grunt) {
 			options: {
 				seperator: ';'
 			},
-			dist: {
+			scripts: {
 				src: ['src/header.js',
 					  'src/impls/utils.js',
 					  'src/impls/FilesystemAPIProvider.js',
@@ -26,6 +26,16 @@ module.exports = function (grunt) {
 			scripts: {
 				files: ["src/**/*.js"],
 				tasks: ["concat"]
+			},
+			contrib: {
+				files: ["src/contrib/**/*.js"],
+				tasks: ["copy:contrib"]
+			}
+		},
+
+		copy: {
+			contrib: {
+				files: [{expand: true, cwd: "src/contrib/", src: "**", dest: "dist/contrib/"}]
 			}
 		},
 
@@ -63,6 +73,6 @@ module.exports = function (grunt) {
 		}
 	});
 
-	grunt.registerTask('default', ['concat', 'connect', 'watch']);
+	grunt.registerTask('default', ['concat', 'copy', 'connect', 'watch']);
 	grunt.registerTask('docs', ['yuidoc']);
 };
