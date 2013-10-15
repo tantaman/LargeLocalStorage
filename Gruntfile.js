@@ -38,6 +38,14 @@ module.exports = function (grunt) {
 			}
 		},
 
+		// docview: {
+		// 	compile: {
+		// 		files: {
+		// 			"doc/LargeLocalStorage.html": "doc/library.handlebars"
+		// 		}
+		// 	}
+		// },
+
 		yuidoc: {
 			compile: {
 				name: '<%= pkg.name %>',
@@ -46,9 +54,10 @@ module.exports = function (grunt) {
 				url: '<%= pkg.homepage %>',
 				options: {
 					paths: 'src',
-					themedir: '../yuidoc-bootstrap-theme',
-					helpers: ['../yuidoc-bootstrap-theme/helpers/helpers.js'],
-					outdir: 'doc'
+					themedir: 'node_modules/yuidoc-library-theme',
+					helpers: ['node_modules/yuidoc-library-theme/helpers/helpers.js'],
+					outdir: 'doc',
+					// parseOnly: true
 			      }
 			}
 		}
