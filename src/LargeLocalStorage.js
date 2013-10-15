@@ -52,24 +52,22 @@ var LargeLocalStorage = (function(Q) {
 	}
 
 	/**
-	 * Constructor to create an instance of LLS.
-	 * The LLS will be immediately returned but not necessarily 
-	 * immediately ready for use.
+	 * Upon construction a LargeLocalStorage (LLS) object will be 
+	 * immediately returned but not necessarily immediately ready for use.
 	 *
-	 * The `initialized` property of the constructed LLS
-	 * object is a promise which will return once
-	 * construction of the storage area has completed.
+	 * A LLS object has an `initialized` property which is a promise
+	 * that is resolved when the LLS object is ready for us.
 	 *
 	 * So usage of LLS would typical be:
 	 * ```
-	 * var storage = new LargeLocalStorage(config);
-	 * storage.initialized.then(function() {
+	 * var storage = new LargeLocalStorage({size: 75*1024*1024});
+	 * storage.initialized.then(function(grantedCapacity) {
 	 *   // storage ready to be used.
-	 * })
+	 * });
 	 * ```
 	 *
-	 * The reason that storage may not be immediately ready for
-	 * use is that some browser's require confirmation from the
+	 * The reason that LLS may not be immediately ready for
+	 * use is that some browsers require confirmation from the
 	 * user before a storage area may be created.  Also,
 	 * the browser's native storage APIs are asynchronous.
 	 *
@@ -177,6 +175,13 @@ var LargeLocalStorage = (function(Q) {
 		* Returns a promise that is fulfilled when the
 		* removal completes.
 		*
+		* ```
+		* // Example
+		* stoarge.rm('exampleDoc').then(function() {
+		*	alert('doc and all attachments were removed');
+		* })
+		* ```
+		*
 		* @method rm
 		* @param {string} docKey
 		* @returns {promise}
@@ -189,9 +194,16 @@ var LargeLocalStorage = (function(Q) {
 		},
 
 		/**
-		* Get the contents of a document identified by docKey
+		* Get the contents of a document identified by `docKey`
 		* TODO: normalize all implementations to allow storage
 		* and retrieval of JS objects?
+		*
+		* ```
+		* // Example
+		* storage.getContents('exampleDoc').then(function(contents) {
+		* 	alert(contents);
+		* });
+		* ```
 		*
 		* @method getContents
 		* @param {string} docKey
@@ -203,7 +215,15 @@ var LargeLocalStorage = (function(Q) {
 		},
 
 		/**
-		* Set the contents identified by docKey with data.
+		* Set the contents identified by `docKey` to `data`.
+		* The document will be created if it does not exist.
+		*
+		* ```
+		* // Example
+		* storage.setContents('exampleDoc', 'some data...').then(function() {
+		*	alert('doc written');
+		* });
+		* ```
 		*
 		* @method setContents
 		* @param {string} docKey
@@ -216,10 +236,20 @@ var LargeLocalStorage = (function(Q) {
 		},
 
 		/**
-		* Get the attachment identified by docKey and attachKey
+		* Get the attachment identified by `docKey` and `attachKey`
+		*
+		* ```
+		* // Example
+		* storage.getAttachment('exampleDoc', 'examplePic').then(function(attachment) {
+		*    var url = URL.createObjectURL(attachment);
+		*    var image = new Image(url);
+		*    document.body.appendChild(image);
+		*    URL.revokeObjectURL(url);
+		* })
+		* ```
 		*
 		* @method getAttachment
-		* @param {string} [docKey] optional.  Defaults to __nodoc__
+		* @param {string} [docKey] Defaults to __nodoc__
 		* @param {string} attachKey key of the attachment
 		* @returns {promise} fulfilled with the attachment or
 		* rejected if it could not be found.  code: 1
@@ -230,41 +260,162 @@ var LargeLocalStorage = (function(Q) {
 			return this._impl.getAttachment(docKey, attachKey);
 		},
 
+		/**
+		* Set an attachment for a given document.  Identified
+		* by `docKey` and `attachKey`.
+		*
+		* ```
+		* // Example
+		* storage.setAttachment('myDoc', 'myPic', blob).then(function() {
+		*    alert('Attachment written');
+		* })
+		* ```
+		*
+		* @method setAttachment
+		* @param {string} [docKey] Defaults to __nodoc__
+		* @param {string} attachKey key for the attachment
+		* @param {any} attachment data
+		* @returns {promise} resolved when the write completes.  Rejected
+		* if an error occurs.
+		*/
 		setAttachment: function(docKey, attachKey, data) {
 			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
 			return this._impl.setAttachment(docKey, attachKey, data);
 		},
 
+		/**
+		* Get the URL for a given attachment.
+		* ```
+		* // Example
+		* storage.getAttachmentURL('myDoc', 'myPic').then(function(url) {
+	 	*   var image = new Image();
+	 	*   image.src = url;
+	 	*   document.body.appendChild(image);
+	 	*   storage.revokeAttachmentURL(url);
+		* })
+		* ```
+		*
+		* This is preferrable to getting the attachment and then getting the
+		* URL via `createObjectURL` (on some systems) as LLS can take advantage of 
+		* lower level details to improve performance.
+		*
+		* @method getAttachmentURL
+		* @param {string} [docKey] Identifies the document.  Defaults to __nodoc__
+		* @param {string} attachKey Identifies the attachment.
+		* @returns {promose} promise that is resolved with the attachment url.
+		*/
 		getAttachmentURL: function(docKey, attachKey) {
 			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
 			return this._impl.getAttachmentURL(docKey, attachKey);
 		},
 
+		/**
+		* Gets all of the attachments for a document.
+		*
+		* ```
+		* // Example
+		* storage.getAllAttachments('exampleDoc').then(function(attachments) {
+		* 	attachments.map(function(a) {
+		*		// do something with it...
+		* 		if (a.type.indexOf('image') == 0) {
+		*			// show image...
+		*		} else if (a.type.indexOf('audio') == 0) {
+		*			// play audio...
+		*		} else ...
+		*	})
+		* })
+		* ```
+		*
+		* @method getAllAttachments
+		* @param {string} [docKey] Identifies the document.  Defaults to __nodoc__
+		* @returns {promise} Promise that is resolved with all of the attachments for
+		* the given document.
+		*/
 		getAllAttachments: function(docKey) {
 			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
 			return this._impl.getAllAttachments(docKey);
 		},
 
+		/**
+		* Gets all attachments URLs for a document.
+		*
+		* ```
+		* // Example
+		* storage.getAllAttachmentURLs('exampleDoc').then(function(urls) {
+		*	urls.map(function(u) {
+		* 		// do something with the url...
+		* 	})
+		* })
+		* ```
+		*
+		* @method getAllAttachmentURLs
+		* @param {string} [docKey] Identifies the document.  Defaults to the __nodoc__ document.
+		* @returns {promise} Promise that is resolved with all of the attachment
+		* urls for the given doc.
+		*/
 		getAllAttachmentURLs: function(docKey) {
 			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
 			return this._impl.getAllAttachmentURLs(docKey);
 		},
 
+		/**
+		* Revoke the attachment URL as required by the underlying
+		* storage system.
+		*
+		* This is akin to `URL.revokeObjectURL(url)`
+		* URLs that come from `getAttachmentURL` or `getAllAttachmentURLs` 
+		* should be revoked by LLS and not `URL.revokeObjectURL`
+		*
+		* ```
+		* // Example
+		* storage.getAttachmentURL('doc', 'attach').then(function(url) {
+		*	// do something with the URL
+		*	storage.revokeAttachmentURL(url);
+		* })
+		* ```
+		*
+		* @method revokeAttachmentURL
+		* @param {string} url The URL as returned by `getAttachmentURL` or `getAttachmentURLs`
+		*/
 		revokeAttachmentURL: function(url) {
 			this._checkAvailability();
 			return this._impl.revokeAttachmentURL(url);
 		},
 
+		/**
+		* Remove an attachment from a document.
+		*
+		* ```
+		* // Example
+		* storage.rmAttachment('exampleDoc', 'someAttachment').then(function() {
+		* 	alert('exampleDoc/someAttachment removed');
+		* }).catch(function(e) {
+		*	alert('Attachment removal failed: ' e);
+		* });
+		* ```
+		*
+		* @method rmAttachment
+		* @param {string} docKey
+		* @param {string} attachKey
+		*/
 		rmAttachment: function(docKey, attachKey) {
 			if (!docKey) docKey = '__nodoc__';
 			this._checkAvailability();
 			return this._impl.rmAttachment(docKey, attachKey);
 		},
 
+		/**
+		* Returns the actual capacity of the storage or -1
+		* if it is unknown.
+		* // TODO: return an estimated capacity if actual capacity is unknown.
+		*
+		* @method getCapacity
+		* @returns {number} Capacity, in bytes, of the storage.  -1 if unknown.
+		*/
 		getCapacity: function() {
 			this._checkAvailability();
 			if (this._impl.getCapacity)
