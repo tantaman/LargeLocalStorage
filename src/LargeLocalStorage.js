@@ -52,13 +52,27 @@ var LargeLocalStorage = (function(Q) {
 	}
 
 	/**
+	 * 
+	 * LargeLocalStorage (or LLS) gives you a large capacity 
+	 * (up to several gig with permission from the user)
+	 * key-value store in the browser.
+	 *
+	 * For storage, LLS uses the [FilesystemAPI](https://developer.mozilla.org/en-US/docs/WebGuide/API/File_System)
+	 * when running in Crome and Opera, 
+	 * [InexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB) in Firefox and IE
+	 * and [WebSQL](http://www.w3.org/TR/webdatabase/) in Safari.
+	 *
+	 * When IndexedDB becomes available in Safari, LLS will
+	 * update to take advantage of that storage implementation.
+	 *
+	 *
 	 * Upon construction a LargeLocalStorage (LLS) object will be 
 	 * immediately returned but not necessarily immediately ready for use.
 	 *
 	 * A LLS object has an `initialized` property which is a promise
 	 * that is resolved when the LLS object is ready for us.
 	 *
-	 * So usage of LLS would typical be:
+	 * Usage of LLS would typically be:
 	 * ```
 	 * var storage = new LargeLocalStorage({size: 75*1024*1024});
 	 * storage.initialized.then(function(grantedCapacity) {
@@ -86,22 +100,28 @@ var LargeLocalStorage = (function(Q) {
 	 * is never ready this could obviously lead to memory issues
 	 * which is why it is not the default behavior.
 	 *
-	 * The config object allows you to specify the desired
-	 * size of the storage in bytes.
+	 * @example
+	 *	var desiredCapacity = 50 * 1024 * 1024; // 50MB
+	 *	var storage = new LargeLocalStorage({
+	 *		size: desiredCapacity
 	 *
-	 * ```
-	 * {
-	 *    size: 75 * 1024 * 1024, // request 75MB
-	 *    
-	 *    // force us to use IndexedDB or WebSQL or the FilesystemAPI
-	 *    // this option is for debugging purposes.
-	 *    forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
-	 * }
-	 * ```
+	 *		// the following is an optional param 
+	 *		// that is useful for debugging.
+	 *		// force LLS to use a specific storage implementation
+	 *
+	 *		// forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
+	 *	});
+	 *	storage.initialized.then(function(capacity) {
+	 *		if (capacity != -1 && capacity != desiredCapacity) {
+	 *			// the user didn't authorize your storage request
+	 *			// so instead you have some limitation on your storage
+	 *		}
+	 *	})
 	 *
 	 * @class LargeLocalStorage
 	 * @constructor
-	 * @param {object} config
+	 * @param {object} config {size: sizeInByes, [forceProvider: force a specific implementation]}
+	 * @return {LargeLocalStorage}
 	 */
 	function LargeLocalStorage(config) {
 		var self = this;
@@ -120,31 +140,17 @@ var LargeLocalStorage = (function(Q) {
 			deferred.reject('No storage provider found');
 		});
 
+		/**
+		* @property {promise} initialized
+		*/
 		this.initialized = deferred.promise;
 	}
 
 	LargeLocalStorage.prototype = {
 		/**
-		* Whether or not the implementation supports attachments.
-		* This will only be true except in the case
-		* that WebSQL, IndexedDB, and FilesystemAPI are
-		* all not present in the browser.
-		* In that case LLS falls back to regular
-		* old DOMStorage (or LocalStorage).
-		*
-		* You can still store attachments via DOMStorage but it
-		* isn't advisable due to the space limit (2.5mb or 5.0mb
-		* depending on the browser)
-		* 
-		* @method supportsAttachments
-		*/
-		supportsAttachments: function() {
-			this._checkAvailability();
-			return this._impl.supportsAttachments();
-		},
-
-		/**
-		* Whether or not LLS is ready to store data
+		* Whether or not LLS is ready to store data.
+		* The `initialized` property can be used to
+		* await initialization.
 		* @method ready
 		*/
 		ready: function() {
@@ -158,6 +164,11 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* Returns a promise that is fulfilled with
 		* the listing.
+		*
+		* @example
+		*	storage.ls().then(function(docKeys) {
+		*		console.log(docKeys);
+		*	})
 		*
 		* @method ls
 		* @param {string} [docKey]
@@ -185,8 +196,6 @@ var LargeLocalStorage = (function(Q) {
 		* @returns {promise}
 		*/
 		rm: function(docKey) {
-			// check for attachments on this path
-			// delete attachments in the storage as well.
 			this._checkAvailability();
 			return this._impl.rm(docKey);
 		},
@@ -391,8 +400,24 @@ var LargeLocalStorage = (function(Q) {
 
 		/**
 		* Returns the actual capacity of the storage or -1
-		* if it is unknown.
-		* // TODO: return an estimated capacity if actual capacity is unknown.
+		* if it is unknown.  If the user denies your request for
+		* storage you'll get back some smaller amount of storage than what you
+		* actually requested.
+		*
+		* TODO: return an estimated capacity if actual capacity is unknown?
+		* -Firefox is 50MB until authorized to go above,
+		* -Chrome is some % of available disk space,
+		* -Safari unlimited as long as the user keeps authorizing size increases
+		* -Opera same as safari?
+		*
+		* @example
+		*	// the initialized property will call you back with the capacity
+		* 	storage.initialized.then(function(capacity) {
+		*		console.log('Authorized to store: ' + capacity + ' bytes');
+		* 	});
+		*	// or if you know your storage is already available
+		*	// you can call getCapacity directly
+		*	storage.getCapacity()
 		*
 		* @method getCapacity
 		* @returns {number} Capacity, in bytes, of the storage.  -1 if unknown.
