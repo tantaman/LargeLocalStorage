@@ -144,8 +144,9 @@ lls.<span class="me1">getAllAttachments</span><span class="br0">(</span>[docKey]
                 <p><em>(Promise)</em>: Promise that is resolved with all of the attachments for
 the given document.</p>
                 <h4>Example</h4>
-                <pre class="code prettyprint"><code>storage.getAllAttachments(&#39;exampleDoc&#39;).then(function(attachments) {
-    attachments.map(function(a) {
+                <pre class="code prettyprint"><code>storage.getAllAttachments(&#39;exampleDoc&#39;).then(function(attachEntries) {
+    attachEntries.map(function(entry) {
+        var a = entry.data;
         // do something with it...
         if (a.type.indexOf(&#39;image&#39;) == 0) {
             // show image...
@@ -176,8 +177,9 @@ lls.<span class="me1">getAllAttachmentURLs</span><span class="br0">(</span>[docK
                 <p><em>(Promise)</em>: Promise that is resolved with all of the attachment
 urls for the given doc.</p>
                 <h4>Example</h4>
-                <pre class="code prettyprint"><code>storage.getAllAttachmentURLs(&#39;exampleDoc&#39;).then(function(urls) {
-    urls.map(function(u) {
+                <pre class="code prettyprint"><code>storage.getAllAttachmentURLs(&#39;exampleDoc&#39;).then(function(urlEntries) {
+    urlEntries.map(function(entry) {
+        var url = entry.url;
         // do something with the url...
     })
 })</code></pre>

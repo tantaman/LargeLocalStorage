@@ -251,7 +251,7 @@
             "line": 312,
             "description": "Gets all of the attachments for a document.",
             "example": [
-                "\n\tstorage.getAllAttachments('exampleDoc').then(function(attachments) {\n\t\tattachments.map(function(a) {\n\t\t\t// do something with it...\n\t\t\tif (a.type.indexOf('image') == 0) {\n\t\t\t\t// show image...\n\t\t\t} else if (a.type.indexOf('audio') == 0) {\n\t\t\t\t// play audio...\n\t\t\t} else ...\n\t\t})\n\t})"
+                "\n\tstorage.getAllAttachments('exampleDoc').then(function(attachEntries) {\n\t\tattachEntries.map(function(entry) {\n\t\t\tvar a = entry.data;\n\t\t\t// do something with it...\n\t\t\tif (a.type.indexOf('image') == 0) {\n\t\t\t\t// show image...\n\t\t\t} else if (a.type.indexOf('audio') == 0) {\n\t\t\t\t// play audio...\n\t\t\t} else ...\n\t\t})\n\t})"
             ],
             "itemtype": "method",
             "name": "getAllAttachments",
@@ -271,10 +271,10 @@
         },
         {
             "file": "src/LargeLocalStorage.js",
-            "line": 338,
+            "line": 339,
             "description": "Gets all attachments URLs for a document.",
             "example": [
-                "\n\tstorage.getAllAttachmentURLs('exampleDoc').then(function(urls) {\n\t\turls.map(function(u) {\n\t\t\t// do something with the url...\n\t\t})\n\t})"
+                "\n\tstorage.getAllAttachmentURLs('exampleDoc').then(function(urlEntries) {\n\t\turlEntries.map(function(entry) {\n\t\t\tvar url = entry.url;\n\t\t\t// do something with the url...\n\t\t})\n\t})"
             ],
             "itemtype": "method",
             "name": "getAllAttachmentURLs",
@@ -294,7 +294,7 @@
         },
         {
             "file": "src/LargeLocalStorage.js",
-            "line": 359,
+            "line": 361,
             "description": "Revoke the attachment URL as required by the underlying\nstorage system.\n\nThis is akin to `URL.revokeObjectURL(url)`\nURLs that come from `getAttachmentURL` or `getAllAttachmentURLs` \nshould be revoked by LLS and not `URL.revokeObjectURL`",
             "example": [
                 "\n\tstorage.getAttachmentURL('doc', 'attach').then(function(url) {\n\t\t// do something with the URL\n\t\tstorage.revokeAttachmentURL(url);\n\t})"
@@ -312,7 +312,7 @@
         },
         {
             "file": "src/LargeLocalStorage.js",
-            "line": 381,
+            "line": 383,
             "description": "Remove an attachment from a document.",
             "example": [
                 "\n\tstorage.rmAttachment('exampleDoc', 'someAttachment').then(function() {\n\t\talert('exampleDoc/someAttachment removed');\n\t}).catch(function(e) {\n\t\talert('Attachment removal failed: ' e);\n\t});"
@@ -335,7 +335,7 @@
         },
         {
             "file": "src/LargeLocalStorage.js",
-            "line": 401,
+            "line": 403,
             "description": "Returns the actual capacity of the storage or -1\nif it is unknown.  If the user denies your request for\nstorage you'll get back some smaller amount of storage than what you\nactually requested.\n\nTODO: return an estimated capacity if actual capacity is unknown?\n-Firefox is 50MB until authorized to go above,\n-Chrome is some % of available disk space,\n-Safari unlimited as long as the user keeps authorizing size increases\n-Opera same as safari?",
             "example": [
                 "\n\t// the initialized property will call you back with the capacity\n\tstorage.initialized.then(function(capacity) {\n\t\tconsole.log('Authorized to store: ' + capacity + ' bytes');\n\t});\n\t// or if you know your storage is already available\n\t// you can call getCapacity directly\n\tstorage.getCapacity()"
@@ -384,11 +384,11 @@
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:338"
+            "line": " src/LargeLocalStorage.js:339"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:401"
+            "line": " src/LargeLocalStorage.js:403"
         }
     ]
 }
