@@ -1,5 +1,4 @@
 LargeLocalStorage.URLCache = (function() {
-
 	function add(cache, docKey, attachKey, url) {
 		var mainCache = cache.main;
 		var docCache = mainCache[docKey];
@@ -85,7 +84,13 @@ LargeLocalStorage.URLCache = (function() {
 
 
 	return {
-		apply: function(lls) {
+		applyTo: function(lls) {
+			this._applyTo(lls);
+		},
+
+		// This method is only used by unit tests to verify
+		// the cache.
+		_applyTo: function(lls) {
 			var obj = {};
 
 			obj._lls = lls;
@@ -98,7 +103,7 @@ LargeLocalStorage.URLCache = (function() {
 			lls.getAttachmentURL = getAttachmentURL.bind(obj);
 			lls.getAllAttachmentURLs = getAllAttachmentURLs.bind(obj);
 
-			return lls;
+			return obj;
 		}
 	}
 });

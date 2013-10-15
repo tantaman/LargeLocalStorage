@@ -1,0 +1,4 @@
+-delete database operation
+-ls implementation
+
+^^ requires an lls folder for the filesystem api or something of the sort.

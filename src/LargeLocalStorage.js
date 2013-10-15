@@ -151,6 +151,14 @@ var LargeLocalStorage = (function(Q) {
 		* Whether or not LLS is ready to store data.
 		* The `initialized` property can be used to
 		* await initialization.
+		* @example
+		*	// may or may not be true
+		*	storage.ready();
+		*	
+		*	storage.initialized.then(function() {
+		*		// always true
+		*		storage.ready();
+		*	})
 		* @method ready
 		*/
 		ready: function() {
@@ -172,7 +180,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method ls
 		* @param {string} [docKey]
-		* @returns {promise}
+		* @returns {promise} resolved with the listing
 		*/
 		ls: function(docKey) {
 			this._checkAvailability();
@@ -193,7 +201,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method rm
 		* @param {string} docKey
-		* @returns {promise}
+		* @returns {promise} resolved when removal completes
 		*/
 		rm: function(docKey) {
 			this._checkAvailability();
@@ -212,7 +220,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method getContents
 		* @param {string} docKey
-		* @returns {promise}
+		* @returns {promise} resolved with the contents when the get completes
 		*/
 		getContents: function(docKey) {
 			this._checkAvailability();
@@ -374,6 +382,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method revokeAttachmentURL
 		* @param {string} url The URL as returned by `getAttachmentURL` or `getAttachmentURLs`
+		* @returns {void}
 		*/
 		revokeAttachmentURL: function(url) {
 			this._checkAvailability();
@@ -387,12 +396,13 @@ var LargeLocalStorage = (function(Q) {
 		* 	storage.rmAttachment('exampleDoc', 'someAttachment').then(function() {
 		* 		alert('exampleDoc/someAttachment removed');
 		* 	}).catch(function(e) {
-		*		alert('Attachment removal failed: ' e);
+		*		alert('Attachment removal failed: ' + e);
 		* 	});
 		*
 		* @method rmAttachment
 		* @param {string} docKey
 		* @param {string} attachKey
+		* @returns {promise} Promise that is resolved once the remove completes
 		*/
 		rmAttachment: function(docKey, attachKey) {
 			if (!docKey) docKey = '__nodoc__';

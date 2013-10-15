@@ -4,24 +4,6 @@
 		// forceProvider: 'WebSQL' // force a desired provider.
 	});
 
-	storage.initialized.then(function() {
-		var runner = mocha.run();
-	}, function(err) {
-		console.log(err);
-		alert('Could not initialize storage.  Did you not authorize it? ' + err);
-	});
-
-	function countdown(n, cb) {
-		var args = [];
-		return function() {
-			for (var i = 0; i < arguments.length; ++i)
-				args.push(arguments[i]);
-			n -= 1;
-			if (n == 0)
-				cb.apply(this, args);
-		}
-	}
-
 	function fail(err) {
 		console.log(err);
 		expect(true).to.equal(false);
@@ -211,5 +193,13 @@
 				done();
 			});
 		});
+	});
+
+
+	storage.initialized.then(function() {
+		window.runMocha();
+	}, function(err) {
+		console.log(err);
+		alert('Could not initialize storage.  Did you not authorize it? ' + err);
 	});
 })(LargeLocalStorage);
