@@ -53,19 +53,32 @@
 
 		it('Removes the URL from the cache when removing the attachment via removing the host document',
 		function(done) {
-			storage.getAttachmentURL('doc', 'attach').then(function(url) {
-				
-			})
+			storage.setAttachment('doc2', 'attach', blob)
+			.then(function() {
+				return storage.rm('doc2');
+			}).then(function() {
+				expect(cacheObj.main.doc2).to.equal(undefined);
+				done();
+			}).catch(function(err) {
+				fail(err);
+				done();
+			});
 		});
 
 		// it('Removes the URL from the cache when revoking the URL',
 		// function(done) {
 
 		// });
+
+		// it('Removes all URLs when emptying the database',
+		// function(done) {
+
+		// });
+
 	});
 	}
 
-	//loadTests();
+	loadTests();
 	storage.initialized.then(function() {
 		window.runMocha();
 	});

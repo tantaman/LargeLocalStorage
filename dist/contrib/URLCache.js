@@ -39,8 +39,8 @@ LargeLocalStorage.URLCache = (function() {
 			var url = docCache[attachKey];
 			delete docCache[attachKey];
 			delete cache.reverse[url];
-			if (cache.option.manageRevocation)
-				this.revokeAttachmentURL(url);
+			if (cache.options.manageRevocation)
+				this.revokeAttachmentURL.call(this._lls, url);
 		}
 
 		var docCache = cache.main[docKey];
@@ -93,7 +93,7 @@ LargeLocalStorage.URLCache = (function() {
 		var promise = this.getAttachmentURL.call(this._lls, docKey, attachKey);
 		var self = this;
 		promise.then(function(url) {
-			add(self._cache, docKey, attachKey, url);
+			self.add(self._cache, docKey, attachKey, url);
 			delete self._pending[pendingKey];
 		});
 
@@ -126,6 +126,8 @@ LargeLocalStorage.URLCache = (function() {
 			if (options[k] === undefined)
 				options[k] = defaultOptions[k];
 		}
+
+		return options;
 	}
 
 	return {
