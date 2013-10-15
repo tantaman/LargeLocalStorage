@@ -43,8 +43,6 @@
                 
                 <li><a href="#LargeLocalStorage-setContents"><code><span class="me1">setContents</span></code></a></li>
                 
-                <li><a href="#LargeLocalStorage-supportsAttachments"><code><span class="me1">supportsAttachments</span></code></a></li>
-                
             </ul>
         </div>
         
@@ -62,51 +60,67 @@
 <span class="me1">LargeLocalStorage</span><span class="br0">(</span>config<span class="br0">)</span> - Constructor
                     </code>
                 </h3>
-                <p>Upon construction a LargeLocalStorage (LLS) object will be 
-immediately returned but not necessarily immediately ready for use.</p>
-<p>A LLS object has an <code>initialized</code> property which is a promise
-that is resolved when the LLS object is ready for us.</p>
-<p>So usage of LLS would typical be:</p>
-<pre><code>var storage = new LargeLocalStorage({size: 75*1024*1024});
-storage.initialized.then(function(grantedCapacity) {
-  // storage ready to be used.
-});</code></pre>
-<p>The reason that LLS may not be immediately ready for
-use is that some browsers require confirmation from the
-user before a storage area may be created.  Also,
-the browser&#39;s native storage APIs are asynchronous.</p>
-<p>If an LLS instance is used before the storage
-area is ready then any
-calls to it will throw an exception with code: "NO_IMPLEMENTATION"</p>
-<p>This behavior is useful when you want the application
-to continue to function--regardless of whether or
-not the user has allowed it to store data--and would
-like to know when your storage calls fail at the point
-of those calls.</p>
-<p>LLS-contrib has utilities to queue storage calls until
-the implementation is ready.  If an implementation
-is never ready this could obviously lead to memory issues
-which is why it is not the default behavior.</p>
-<p>The config object allows you to specify the desired
-size of the storage in bytes.</p>
-<pre><code>{
-   size: 75 * 1024 * 1024, // request 75MB
-
-   // force us to use IndexedDB or WebSQL or the FilesystemAPI
-   // this option is for debugging purposes.
-   forceProvider: &#39;IndexedDB&#39; or &#39;WebSQL&#39; or &#39;FilesystemAPI&#39;
-}</code></pre>
+                <p>LargeLocalStorage (or LLS) gives you a large capacity 
+ (up to several gig with permission from the user)
+ key-value store in the browser.</p>
+<p> For storage, LLS uses the <a href="https://developer.mozilla.org/en-US/docs/WebGuide/API/File_System">FilesystemAPI</a>
+ when running in Crome and Opera, 
+ <a href="https://developer.mozilla.org/en-US/docs/IndexedDB">InexedDB</a> in Firefox and IE
+ and <a href="http://www.w3.org/TR/webdatabase/">WebSQL</a> in Safari.</p>
+<p> When IndexedDB becomes available in Safari, LLS will
+ update to take advantage of that storage implementation.</p>
+<p> Upon construction a LargeLocalStorage (LLS) object will be 
+ immediately returned but not necessarily immediately ready for use.</p>
+<p> A LLS object has an <code>initialized</code> property which is a promise
+ that is resolved when the LLS object is ready for us.</p>
+<p> Usage of LLS would typically be:</p>
+<pre><code> var storage = new LargeLocalStorage({size: 75*1024*1024});
+ storage.initialized.then(function(grantedCapacity) {
+   // storage ready to be used.
+ });</code></pre>
+<p> The reason that LLS may not be immediately ready for
+ use is that some browsers require confirmation from the
+ user before a storage area may be created.  Also,
+ the browser&#39;s native storage APIs are asynchronous.</p>
+<p> If an LLS instance is used before the storage
+ area is ready then any
+ calls to it will throw an exception with code: "NO_IMPLEMENTATION"</p>
+<p> This behavior is useful when you want the application
+ to continue to function--regardless of whether or
+ not the user has allowed it to store data--and would
+ like to know when your storage calls fail at the point
+ of those calls.</p>
+<p> LLS-contrib has utilities to queue storage calls until
+ the implementation is ready.  If an implementation
+ is never ready this could obviously lead to memory issues
+ which is why it is not the default behavior.</p>
 
                 <h4>Arguments</h4>
                 <ol>
                     
-                    <li><code>config</code> <em>(Object)</em>: </li>
+                    <li><code>config</code> <em>(Object)</em>: {size: sizeInByes, [forceProvider: force a specific implementation]}</li>
                     
                 </ol>
                 <h4>Returns</h4>
-                <p><em>()</em>: </p>
+                <p><em>(LargeLocalStorage)</em>: </p>
                 <h4>Example</h4>
-                
+                <pre class="code prettyprint"><code>var desiredCapacity = 50 * 1024 * 1024; // 50MB
+var storage = new LargeLocalStorage({
+    size: desiredCapacity
+
+    // the following is an optional param 
+    // that is useful for debugging.
+    // force LLS to use a specific storage implementation
+
+    // forceProvider: &#39;IndexedDB&#39; or &#39;WebSQL&#39; or &#39;FilesystemAPI&#39;
+});
+storage.initialized.then(function(capacity) {
+    if (capacity != -1 &amp;&amp; capacity != desiredCapacity) {
+        // the user didn&#39;t authorize your storage request
+        // so instead you have some limitation on your storage
+    }
+})</code></pre>
+
             </div>
             
 
@@ -240,8 +254,14 @@ lls.<span class="me1">getCapacity</span><span class="br0">(</span><span class="b
                     </code>
                 </h3>
                 <p>Returns the actual capacity of the storage or -1
-if it is unknown.
-// TODO: return an estimated capacity if actual capacity is unknown.</p>
+if it is unknown.  If the user denies your request for
+storage you&#39;ll get back some smaller amount of storage than what you
+actually requested.</p>
+<p>TODO: return an estimated capacity if actual capacity is unknown?
+-Firefox is 50MB until authorized to go above,
+-Chrome is some % of available disk space,
+-Safari unlimited as long as the user keeps authorizing size increases
+-Opera same as safari?</p>
 
                 <h4>Arguments</h4>
                 <ol>
@@ -250,7 +270,14 @@ if it is unknown.
                 <h4>Returns</h4>
                 <p><em>(Number)</em>: Capacity, in bytes, of the storage.  -1 if unknown.</p>
                 <h4>Example</h4>
-                
+                <pre class="code prettyprint"><code>// the initialized property will call you back with the capacity
+storage.initialized.then(function(capacity) {
+    console.log(&#39;Authorized to store: &#39; + capacity + &#39; bytes&#39;);
+});
+// or if you know your storage is already available
+// you can call getCapacity directly
+storage.getCapacity()</code></pre>
+
             </div>
             
             <div>
@@ -300,7 +327,10 @@ the listing.</p>
                 <h4>Returns</h4>
                 <p><em>(Promise)</em>: </p>
                 <h4>Example</h4>
-                
+                <pre class="code prettyprint"><code>storage.ls().then(function(docKeys) {
+    console.log(docKeys);
+})</code></pre>
+
             </div>
             
             <div>
@@ -310,7 +340,9 @@ the listing.</p>
 lls.<span class="me1">ready</span><span class="br0">(</span><span class="br0">)</span>
                     </code>
                 </h3>
-                <p>Whether or not LLS is ready to store data</p>
+                <p>Whether or not LLS is ready to store data.
+The <code>initialized</code> property can be used to
+await initialization.</p>
 
                 <h4>Arguments</h4>
                 <ol>
@@ -461,33 +493,6 @@ The document will be created if it does not exist.</p>
     alert(&#39;doc written&#39;);
 });</code></pre>
 
-            </div>
-            
-            <div>
-                <h3>
-                    <a id="LargeLocalStorage-supportsAttachments"></a>
-                    <code>
-lls.<span class="me1">supportsAttachments</span><span class="br0">(</span><span class="br0">)</span>
-                    </code>
-                </h3>
-                <p>Whether or not the implementation supports attachments.
-This will only be true except in the case
-that WebSQL, IndexedDB, and FilesystemAPI are
-all not present in the browser.
-In that case LLS falls back to regular
-old DOMStorage (or LocalStorage).</p>
-<p>You can still store attachments via DOMStorage but it
-isn&#39;t advisable due to the space limit (2.5mb or 5.0mb
-depending on the browser)</p>
-
-                <h4>Arguments</h4>
-                <ol>
-                    
-                </ol>
-                <h4>Returns</h4>
-                <p><em>()</em>: </p>
-                <h4>Example</h4>
-                
             </div>
             
         </div>
