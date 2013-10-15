@@ -1,0 +1,381 @@
+{
+    "project": {
+        "name": "LargeLocalStorage",
+        "description": "Storage large files and blob in a cross platform way, in the browser",
+        "version": "0.1.0",
+        "url": ""
+    },
+    "files": {
+        "src/LargeLocalStorage.js": {
+            "name": "src/LargeLocalStorage.js",
+            "modules": {},
+            "classes": {
+                "LargeLocalStorage": 1
+            },
+            "fors": {},
+            "namespaces": {}
+        }
+    },
+    "modules": {},
+    "classes": {
+        "LargeLocalStorage": {
+            "name": "LargeLocalStorage",
+            "shortname": "LargeLocalStorage",
+            "classitems": [],
+            "plugins": [],
+            "extensions": [],
+            "plugin_for": [],
+            "extension_for": [],
+            "file": "src/LargeLocalStorage.js",
+            "line": 54,
+            "description": "Upon construction a LargeLocalStorage (LLS) object will be \nimmediately returned but not necessarily immediately ready for use.\n\nA LLS object has an `initialized` property which is a promise\nthat is resolved when the LLS object is ready for us.\n\nSo usage of LLS would typical be:\n```\nvar storage = new LargeLocalStorage({size: 75*1024*1024});\nstorage.initialized.then(function(grantedCapacity) {\n  // storage ready to be used.\n});\n```\n\nThe reason that LLS may not be immediately ready for\nuse is that some browsers require confirmation from the\nuser before a storage area may be created.  Also,\nthe browser's native storage APIs are asynchronous.\n\nIf an LLS instance is used before the storage\narea is ready then any\ncalls to it will throw an exception with code: \"NO_IMPLEMENTATION\"\n\nThis behavior is useful when you want the application\nto continue to function--regardless of whether or\nnot the user has allowed it to store data--and would\nlike to know when your storage calls fail at the point\nof those calls.\n\nLLS-contrib has utilities to queue storage calls until\nthe implementation is ready.  If an implementation\nis never ready this could obviously lead to memory issues\nwhich is why it is not the default behavior.\n\nThe config object allows you to specify the desired\nsize of the storage in bytes.\n\n```\n{\n   size: 75 * 1024 * 1024, // request 75MB\n   \n   // force us to use IndexedDB or WebSQL or the FilesystemAPI\n   // this option is for debugging purposes.\n   forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'\n}\n```",
+            "is_constructor": 1,
+            "params": [
+                {
+                    "name": "config",
+                    "description": "",
+                    "type": "Object"
+                }
+            ]
+        }
+    },
+    "classitems": [
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 127,
+            "description": "Whether or not the implementation supports attachments.\nThis will only be true except in the case\nthat WebSQL, IndexedDB, and FilesystemAPI are\nall not present in the browser.\nIn that case LLS falls back to regular\nold DOMStorage (or LocalStorage).\n\nYou can still store attachments via DOMStorage but it\nisn't advisable due to the space limit (2.5mb or 5.0mb\ndepending on the browser)",
+            "itemtype": "method",
+            "name": "supportsAttachments",
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 146,
+            "description": "Whether or not LLS is ready to store data",
+            "itemtype": "method",
+            "name": "ready",
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 154,
+            "description": "List all attachments under a given key.\n\nList all documents if no key is provided.\n\nReturns a promise that is fulfilled with\nthe listing.",
+            "itemtype": "method",
+            "name": "ls",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "",
+                    "type": "String",
+                    "optional": true
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 171,
+            "description": "Remove the specified document and all\nof its attachments.\n\nReturns a promise that is fulfilled when the\nremoval completes.",
+            "example": [
+                "\n\tstoarge.rm('exampleDoc').then(function() {\n\t\talert('doc and all attachments were removed');\n\t})"
+            ],
+            "itemtype": "method",
+            "name": "rm",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 194,
+            "description": "Get the contents of a document identified by `docKey`\nTODO: normalize all implementations to allow storage\nand retrieval of JS objects?",
+            "example": [
+                "\n\tstorage.getContents('exampleDoc').then(function(contents) {\n\t\talert(contents);\n\t});"
+            ],
+            "itemtype": "method",
+            "name": "getContents",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 213,
+            "description": "Set the contents identified by `docKey` to `data`.\nThe document will be created if it does not exist.",
+            "example": [
+                "\n\tstorage.setContents('exampleDoc', 'some data...').then(function() {\n\t\talert('doc written');\n\t});"
+            ],
+            "itemtype": "method",
+            "name": "setContents",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "data",
+                    "description": "",
+                    "type": "Any"
+                }
+            ],
+            "return": {
+                "description": "fulfilled when set completes",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 232,
+            "description": "Get the attachment identified by `docKey` and `attachKey`",
+            "example": [
+                "\n\tstorage.getAttachment('exampleDoc', 'examplePic').then(function(attachment) {\n   \tvar url = URL.createObjectURL(attachment);\n   \tvar image = new Image(url);\n   \tdocument.body.appendChild(image);\n   \tURL.revokeObjectURL(url);\n\t})"
+            ],
+            "itemtype": "method",
+            "name": "getAttachment",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "Defaults to __nodoc__",
+                    "type": "String",
+                    "optional": true
+                },
+                {
+                    "name": "attachKey",
+                    "description": "key of the attachment",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "fulfilled with the attachment or\nrejected if it could not be found.  code: 1",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 255,
+            "description": "Set an attachment for a given document.  Identified\nby `docKey` and `attachKey`.",
+            "example": [
+                "\n\tstorage.setAttachment('myDoc', 'myPic', blob).then(function() {\n   \talert('Attachment written');\n\t})"
+            ],
+            "itemtype": "method",
+            "name": "setAttachment",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "Defaults to __nodoc__",
+                    "type": "String",
+                    "optional": true
+                },
+                {
+                    "name": "attachKey",
+                    "description": "key for the attachment",
+                    "type": "String"
+                },
+                {
+                    "name": "attachment",
+                    "description": "data",
+                    "type": "Any"
+                }
+            ],
+            "return": {
+                "description": "resolved when the write completes.  Rejected\nif an error occurs.",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 277,
+            "description": "Get the URL for a given attachment.",
+            "example": [
+                "\n\tstorage.getAttachmentURL('myDoc', 'myPic').then(function(url) {\n  \tvar image = new Image();\n  \timage.src = url;\n  \tdocument.body.appendChild(image);\n  \tstorage.revokeAttachmentURL(url);\n\t})\n\nThis is preferrable to getting the attachment and then getting the\nURL via `createObjectURL` (on some systems) as LLS can take advantage of \nlower level details to improve performance."
+            ],
+            "itemtype": "method",
+            "name": "getAttachmentURL",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "Identifies the document.  Defaults to __nodoc__",
+                    "type": "String",
+                    "optional": true
+                },
+                {
+                    "name": "attachKey",
+                    "description": "Identifies the attachment.",
+                    "type": "String"
+                }
+            ],
+            "return": {
+                "description": "promise that is resolved with the attachment url.",
+                "type": "Promose"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 303,
+            "description": "Gets all of the attachments for a document.",
+            "example": [
+                "\n\tstorage.getAllAttachments('exampleDoc').then(function(attachments) {\n\t\tattachments.map(function(a) {\n\t\t\t// do something with it...\n\t\t\tif (a.type.indexOf('image') == 0) {\n\t\t\t\t// show image...\n\t\t\t} else if (a.type.indexOf('audio') == 0) {\n\t\t\t\t// play audio...\n\t\t\t} else ...\n\t\t})\n\t})"
+            ],
+            "itemtype": "method",
+            "name": "getAllAttachments",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "Identifies the document.  Defaults to __nodoc__",
+                    "type": "String",
+                    "optional": true
+                }
+            ],
+            "return": {
+                "description": "Promise that is resolved with all of the attachments for\nthe given document.",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 329,
+            "description": "Gets all attachments URLs for a document.",
+            "example": [
+                "\n\tstorage.getAllAttachmentURLs('exampleDoc').then(function(urls) {\n\t\turls.map(function(u) {\n\t\t\t// do something with the url...\n\t\t})\n\t})"
+            ],
+            "itemtype": "method",
+            "name": "getAllAttachmentURLs",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "Identifies the document.  Defaults to the __nodoc__ document.",
+                    "type": "String",
+                    "optional": true
+                }
+            ],
+            "return": {
+                "description": "Promise that is resolved with all of the attachment\nurls for the given doc.",
+                "type": "Promise"
+            },
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 350,
+            "description": "Revoke the attachment URL as required by the underlying\nstorage system.\n\nThis is akin to `URL.revokeObjectURL(url)`\nURLs that come from `getAttachmentURL` or `getAllAttachmentURLs` \nshould be revoked by LLS and not `URL.revokeObjectURL`",
+            "example": [
+                "\n\tstorage.getAttachmentURL('doc', 'attach').then(function(url) {\n\t\t// do something with the URL\n\t\tstorage.revokeAttachmentURL(url);\n\t})"
+            ],
+            "itemtype": "method",
+            "name": "revokeAttachmentURL",
+            "params": [
+                {
+                    "name": "url",
+                    "description": "The URL as returned by `getAttachmentURL` or `getAttachmentURLs`",
+                    "type": "String"
+                }
+            ],
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 372,
+            "description": "Remove an attachment from a document.",
+            "example": [
+                "\n\tstorage.rmAttachment('exampleDoc', 'someAttachment').then(function() {\n\t\talert('exampleDoc/someAttachment removed');\n\t}).catch(function(e) {\n\t\talert('Attachment removal failed: ' e);\n\t});"
+            ],
+            "itemtype": "method",
+            "name": "rmAttachment",
+            "params": [
+                {
+                    "name": "docKey",
+                    "description": "",
+                    "type": "String"
+                },
+                {
+                    "name": "attachKey",
+                    "description": "",
+                    "type": "String"
+                }
+            ],
+            "class": "LargeLocalStorage"
+        },
+        {
+            "file": "src/LargeLocalStorage.js",
+            "line": 392,
+            "description": "Returns the actual capacity of the storage or -1\nif it is unknown.\n// TODO: return an estimated capacity if actual capacity is unknown.",
+            "itemtype": "method",
+            "name": "getCapacity",
+            "return": {
+                "description": "Capacity, in bytes, of the storage.  -1 if unknown.",
+                "type": "Number"
+            },
+            "class": "LargeLocalStorage"
+        }
+    ],
+    "warnings": [
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:154"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:171"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:194"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:213"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:232"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:255"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:277"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:303"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:329"
+        },
+        {
+            "message": "replacing incorrect tag: returns with return",
+            "line": " src/LargeLocalStorage.js:392"
+        }
+    ]
+}

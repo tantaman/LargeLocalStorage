@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="en" id="docs">
+<head>
+    <meta charset="utf-8">
+    <title>LargeLocalStorage - LargeLocalStorage</title>
+    <link rel="stylesheet" href="../assets/vendor/prettify/prettify-min.css">
+    <link rel="stylesheet" href="../assets/css/main.css">
+</head>
+<body>
+    <h1>LargeLocalStorage <span>0.1.0</span></h1>
+    <div>
+        
+        <div>
+            <h2><code>LargeLocalStorage</code></h2>
+            <ul>
+                
+                <li><a href="#-LargeLocalStorage"><code><span class="me1">Constructor</span></code></a></li>
+                
+                
+                <li><a href="#LargeLocalStorage-getAllAttachments"><code><span class="me1">getAllAttachments</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-getAllAttachmentURLs"><code><span class="me1">getAllAttachmentURLs</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-getAttachment"><code><span class="me1">getAttachment</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-getAttachmentURL"><code><span class="me1">getAttachmentURL</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-getCapacity"><code><span class="me1">getCapacity</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-getContents"><code><span class="me1">getContents</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-ls"><code><span class="me1">ls</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-ready"><code><span class="me1">ready</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-revokeAttachmentURL"><code><span class="me1">revokeAttachmentURL</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-rm"><code><span class="me1">rm</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-rmAttachment"><code><span class="me1">rmAttachment</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-setAttachment"><code><span class="me1">setAttachment</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-setContents"><code><span class="me1">setContents</span></code></a></li>
+                
+                <li><a href="#LargeLocalStorage-supportsAttachments"><code><span class="me1">supportsAttachments</span></code></a></li>
+                
+            </ul>
+        </div>
+        
+    </div>
+    <div>
+        
+        <div>
+            <h2><code>"LargeLocalStorage" Methods</code></h2>
+
+            
+            <div>
+                <h3>
+                    <a id="-LargeLocalStorage"></a>
+                    <code>
+<span class="me1">LargeLocalStorage</span><span class="br0">(</span>config<span class="br0">)</span> - Constructor
+                    </code>
+                </h3>
+                <p>Upon construction a LargeLocalStorage (LLS) object will be 
+immediately returned but not necessarily immediately ready for use.</p>
+<p>A LLS object has an <code>initialized</code> property which is a promise
+that is resolved when the LLS object is ready for us.</p>
+<p>So usage of LLS would typical be:</p>
+<pre><code>var storage = new LargeLocalStorage({size: 75*1024*1024});
+storage.initialized.then(function(grantedCapacity) {
+  // storage ready to be used.
+});</code></pre>
+<p>The reason that LLS may not be immediately ready for
+use is that some browsers require confirmation from the
+user before a storage area may be created.  Also,
+the browser&#39;s native storage APIs are asynchronous.</p>
+<p>If an LLS instance is used before the storage
+area is ready then any
+calls to it will throw an exception with code: "NO_IMPLEMENTATION"</p>
+<p>This behavior is useful when you want the application
+to continue to function--regardless of whether or
+not the user has allowed it to store data--and would
+like to know when your storage calls fail at the point
+of those calls.</p>
+<p>LLS-contrib has utilities to queue storage calls until
+the implementation is ready.  If an implementation
+is never ready this could obviously lead to memory issues
+which is why it is not the default behavior.</p>
+<p>The config object allows you to specify the desired
+size of the storage in bytes.</p>
+<pre><code>{
+   size: 75 * 1024 * 1024, // request 75MB
+
+   // force us to use IndexedDB or WebSQL or the FilesystemAPI
+   // this option is for debugging purposes.
+   forceProvider: &#39;IndexedDB&#39; or &#39;WebSQL&#39; or &#39;FilesystemAPI&#39;
+}</code></pre>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>config</code> <em>(Object)</em>: </li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>()</em>: </p>
+                <h4>Example</h4>
+                
+            </div>
+            
+
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-getAllAttachments"></a>
+                    <code>
+lls.<span class="me1">getAllAttachments</span><span class="br0">(</span>[docKey]<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Gets all of the attachments for a document.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to <strong>nodoc</strong></li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: Promise that is resolved with all of the attachments for
+the given document.</p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.getAllAttachments(&#39;exampleDoc&#39;).then(function(attachments) {
+    attachments.map(function(a) {
+        // do something with it...
+        if (a.type.indexOf(&#39;image&#39;) == 0) {
+            // show image...
+        } else if (a.type.indexOf(&#39;audio&#39;) == 0) {
+            // play audio...
+        } else ...
+    })
+})</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-getAllAttachmentURLs"></a>
+                    <code>
+lls.<span class="me1">getAllAttachmentURLs</span><span class="br0">(</span>[docKey]<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Gets all attachments URLs for a document.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to the <strong>nodoc</strong> document.</li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: Promise that is resolved with all of the attachment
+urls for the given doc.</p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.getAllAttachmentURLs(&#39;exampleDoc&#39;).then(function(urls) {
+    urls.map(function(u) {
+        // do something with the url...
+    })
+})</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-getAttachment"></a>
+                    <code>
+lls.<span class="me1">getAttachment</span><span class="br0">(</span>[docKey], attachKey<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Get the attachment identified by <code>docKey</code> and <code>attachKey</code></p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: Defaults to <strong>nodoc</strong></li>
+                    
+                    <li><code>attachKey</code> <em>(String)</em>: key of the attachment</li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: fulfilled with the attachment or
+rejected if it could not be found.  code: 1</p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.getAttachment(&#39;exampleDoc&#39;, &#39;examplePic&#39;).then(function(attachment) {
+   var url = URL.createObjectURL(attachment);
+   var image = new Image(url);
+   document.body.appendChild(image);
+   URL.revokeObjectURL(url);
+})</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-getAttachmentURL"></a>
+                    <code>
+lls.<span class="me1">getAttachmentURL</span><span class="br0">(</span>[docKey], attachKey<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Get the URL for a given attachment.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to <strong>nodoc</strong></li>
+                    
+                    <li><code>attachKey</code> <em>(String)</em>: Identifies the attachment.</li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promose)</em>: promise that is resolved with the attachment url.</p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.getAttachmentURL(&#39;myDoc&#39;, &#39;myPic&#39;).then(function(url) {
+  var image = new Image();
+  image.src = url;
+  document.body.appendChild(image);
+  storage.revokeAttachmentURL(url);
+})</code></pre>
+<p>This is preferrable to getting the attachment and then getting the
+URL via <code>createObjectURL</code> (on some systems) as LLS can take advantage of 
+lower level details to improve performance.</p>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-getCapacity"></a>
+                    <code>
+lls.<span class="me1">getCapacity</span><span class="br0">(</span><span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Returns the actual capacity of the storage or -1
+if it is unknown.
+// TODO: return an estimated capacity if actual capacity is unknown.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Number)</em>: Capacity, in bytes, of the storage.  -1 if unknown.</p>
+                <h4>Example</h4>
+                
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-getContents"></a>
+                    <code>
+lls.<span class="me1">getContents</span><span class="br0">(</span>docKey<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Get the contents of a document identified by <code>docKey</code>
+TODO: normalize all implementations to allow storage
+and retrieval of JS objects?</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: </li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: </p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.getContents(&#39;exampleDoc&#39;).then(function(contents) {
+    alert(contents);
+});</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-ls"></a>
+                    <code>
+lls.<span class="me1">ls</span><span class="br0">(</span>[docKey]<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>List all attachments under a given key.</p>
+<p>List all documents if no key is provided.</p>
+<p>Returns a promise that is fulfilled with
+the listing.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: </li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: </p>
+                <h4>Example</h4>
+                
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-ready"></a>
+                    <code>
+lls.<span class="me1">ready</span><span class="br0">(</span><span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Whether or not LLS is ready to store data</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>()</em>: </p>
+                <h4>Example</h4>
+                
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-revokeAttachmentURL"></a>
+                    <code>
+lls.<span class="me1">revokeAttachmentURL</span><span class="br0">(</span>url<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Revoke the attachment URL as required by the underlying
+storage system.</p>
+<p>This is akin to <code>URL.revokeObjectURL(url)</code>
+URLs that come from <code>getAttachmentURL</code> or <code>getAllAttachmentURLs</code> 
+should be revoked by LLS and not <code>URL.revokeObjectURL</code></p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>url</code> <em>(String)</em>: The URL as returned by <code>getAttachmentURL</code> or <code>getAttachmentURLs</code></li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>()</em>: </p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.getAttachmentURL(&#39;doc&#39;, &#39;attach&#39;).then(function(url) {
+    // do something with the URL
+    storage.revokeAttachmentURL(url);
+})</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-rm"></a>
+                    <code>
+lls.<span class="me1">rm</span><span class="br0">(</span>docKey<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Remove the specified document and all
+of its attachments.</p>
+<p>Returns a promise that is fulfilled when the
+removal completes.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: </li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: </p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>stoarge.rm(&#39;exampleDoc&#39;).then(function() {
+    alert(&#39;doc and all attachments were removed&#39;);
+})</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-rmAttachment"></a>
+                    <code>
+lls.<span class="me1">rmAttachment</span><span class="br0">(</span>docKey, attachKey<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Remove an attachment from a document.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: </li>
+                    
+                    <li><code>attachKey</code> <em>(String)</em>: </li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>()</em>: </p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.rmAttachment(&#39;exampleDoc&#39;, &#39;someAttachment&#39;).then(function() {
+    alert(&#39;exampleDoc/someAttachment removed&#39;);
+}).catch(function(e) {
+    alert(&#39;Attachment removal failed: &#39; e);
+});</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-setAttachment"></a>
+                    <code>
+lls.<span class="me1">setAttachment</span><span class="br0">(</span>[docKey], attachKey, attachment<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Set an attachment for a given document.  Identified
+by <code>docKey</code> and <code>attachKey</code>.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: Defaults to <strong>nodoc</strong></li>
+                    
+                    <li><code>attachKey</code> <em>(String)</em>: key for the attachment</li>
+                    
+                    <li><code>attachment</code> <em>(Any)</em>: data</li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: resolved when the write completes.  Rejected
+if an error occurs.</p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.setAttachment(&#39;myDoc&#39;, &#39;myPic&#39;, blob).then(function() {
+   alert(&#39;Attachment written&#39;);
+})</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-setContents"></a>
+                    <code>
+lls.<span class="me1">setContents</span><span class="br0">(</span>docKey, data<span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Set the contents identified by <code>docKey</code> to <code>data</code>.
+The document will be created if it does not exist.</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                    <li><code>docKey</code> <em>(String)</em>: </li>
+                    
+                    <li><code>data</code> <em>(Any)</em>: </li>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>(Promise)</em>: fulfilled when set completes</p>
+                <h4>Example</h4>
+                <pre class="code prettyprint"><code>storage.setContents(&#39;exampleDoc&#39;, &#39;some data...&#39;).then(function() {
+    alert(&#39;doc written&#39;);
+});</code></pre>
+
+            </div>
+            
+            <div>
+                <h3>
+                    <a id="LargeLocalStorage-supportsAttachments"></a>
+                    <code>
+lls.<span class="me1">supportsAttachments</span><span class="br0">(</span><span class="br0">)</span>
+                    </code>
+                </h3>
+                <p>Whether or not the implementation supports attachments.
+This will only be true except in the case
+that WebSQL, IndexedDB, and FilesystemAPI are
+all not present in the browser.
+In that case LLS falls back to regular
+old DOMStorage (or LocalStorage).</p>
+<p>You can still store attachments via DOMStorage but it
+isn&#39;t advisable due to the space limit (2.5mb or 5.0mb
+depending on the browser)</p>
+
+                <h4>Arguments</h4>
+                <ol>
+                    
+                </ol>
+                <h4>Returns</h4>
+                <p><em>()</em>: </p>
+                <h4>Example</h4>
+                
+            </div>
+            
+        </div>
+        
+    </div>
+<script src="../assets/vendor/prettify/prettify-min.js"></script>
+<script>prettyPrint();</script>
+</body>
+</html>
