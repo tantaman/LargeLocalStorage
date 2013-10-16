@@ -15,12 +15,13 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql('SELECT value FROM files WHERE fname = ?', [docKey],
 				function(tx, res) {
 					if (res.rows.length == 0) {
-						deferred.reject({code: 1});
+						deferred.resolve(undefined);
 					} else {
 						deferred.resolve(res.rows.item(0).value);
 					}
 				});
 			}, function(err) {
+				consol.log(err);
 				deferred.reject(err);
 			});
 
@@ -33,6 +34,7 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql(
 				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [docKey, data]);
 			}, function(err) {
+				console.log(err);
 				deferred.reject(err);
 			}, function() {
 				deferred.resolve();
@@ -43,10 +45,12 @@ var WebSQLProvider = (function(Q) {
 
 		rm: function(docKey) {
 			var deferred = Q.defer();
+
 			this._db.transaction(function(tx) {
 				tx.executeSql('DELETE FROM files WHERE fname = ?', [docKey]);
 				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [docKey]);
 			}, function(err) {
+				console.log(err);
 				deferred.reject(err);
 			}, function() {
 				deferred.resolve();
@@ -63,7 +67,7 @@ var WebSQLProvider = (function(Q) {
 				[fname, akey],
 				function(tx, res) {
 					if (res.rows.length == 0) {
-						deferred.reject({code: 1});
+						deferred.resolve(undefined);
 					} else {
 						deferred.resolve(dataURLToBlob(res.rows.item(0).value));
 					}
