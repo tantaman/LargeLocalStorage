@@ -116,13 +116,13 @@ var FilesystemAPIProvider = (function(Q) {
 			function(entry) {
 				var reader = entry.createReader();
 				readDirEntries(reader, []).then(function(entries) {
-					deferred.resolve(entries.map(function(entry) {
-						if (isRoot && entry.isDirectory) {
-							return entry.name.replace('-attachments', '');
-						} else {
-							return entry.name;
+					var listing = [];
+					entries.forEach(function(entry) {
+						if (!entry.isDirectory) {
+							listing.push(entry.name);
 						}
-					}));
+					});
+					deferred.resolve(listing);
 				});
 			}, function(error) {
 				deferred.reject(error);

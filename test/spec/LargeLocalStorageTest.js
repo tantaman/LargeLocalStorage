@@ -211,8 +211,17 @@
 			});
 		});
 
+		// TODO: create a new db to test on so this isn't
+		// broken when updating other tests
 		it('Allows us to ls for all docs', function(done) {
 			storage.ls().then(function(listing) {
+				expect(listing.indexOf('testfile4')).to.not.equal(-1);
+				expect(listing.indexOf('testFile')).to.not.equal(-1);
+				expect(listing.indexOf('testfile2')).to.not.equal(-1);
+				expect(listing.length).to.equal(3);
+				done();
+			}).catch(function(err) {
+				fail(err);
 				done();
 			});
 		});
