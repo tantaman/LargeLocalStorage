@@ -52,6 +52,17 @@ var utils = (function() {
 			});
 
 			return deferred.promise;
+		},
+
+		countdown: function(n, cb) {
+		    var args = [];
+		    return function() {
+		      for (var i = 0; i < arguments.length; ++i)
+		        args.push(arguments[i]);
+		      n -= 1;
+		      if (n == 0)
+		        cb.apply(this, args);
+		    }
 		}
 	};
 

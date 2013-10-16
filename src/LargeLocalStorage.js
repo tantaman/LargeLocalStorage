@@ -5,6 +5,15 @@ var LargeLocalStorage = (function(Q) {
 	else
 		sessionMeta = {};
 
+	function defaults(options, defaultOptions) {
+		for (var k in defaultOptions) {
+			if (options[k] === undefined)
+				options[k] = defaultOptions[k];
+		}
+
+		return options;
+	}
+
 	function getImpl(type) {
 		switch(type) {
 			case 'FileSystemAPI':
@@ -25,7 +34,15 @@ var LargeLocalStorage = (function(Q) {
 		LocalStorage: LocalStorageProvider
 	}
 
+	var defaultConfig = {
+		size: 10 * 1024 * 1024,
+		name: 'lls'
+	};
+
 	function selectImplementation(config) {
+		if (!config) config = {};
+		config = defaults(config, defaultConfig);
+
 		if (config.forceProvider) {
 			return providers[config.forceProvider].init(config);
 		}
@@ -103,12 +120,18 @@ var LargeLocalStorage = (function(Q) {
 	 * @example
 	 *	var desiredCapacity = 50 * 1024 * 1024; // 50MB
 	 *	var storage = new LargeLocalStorage({
-	 *		size: desiredCapacity
+	 *		// desired capacity, in bytes.
+	 *		size: desiredCapacity,
+	 *
+	 * 		// optional name for your LLS database. Defaults to lls.
+	 *		// This is the name given to the underlying
+	 *		// IndexedDB or WebSQL DB or FSAPI Folder.
+	 *		// LLS's with different names are independent.
+	 *		name: 'myStorage'
 	 *
 	 *		// the following is an optional param 
 	 *		// that is useful for debugging.
 	 *		// force LLS to use a specific storage implementation
-	 *
 	 *		// forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
 	 *	});
 	 *	storage.initialized.then(function(capacity) {
@@ -144,6 +167,27 @@ var LargeLocalStorage = (function(Q) {
 		* @property {promise} initialized
 		*/
 		this.initialized = deferred.promise;
+
+		var piped = pipeline([
+			'ready',
+			'ls',
+			'rm',
+			'clear',
+			'getContents',
+			'setContents',
+			'getAttachment',
+			'setAttachment',
+			'getAttachmentURL',
+			'getAllAttachments',
+			'getAllAttachmentURLs',
+			'revokeAttachmentURL',
+			'rmAttachment',
+			'getCapacity',
+			'initialized']);
+
+		piped.pipe.addLast('lls', this);
+		piped.initialized = this.initialized;
+		return piped;
 	}
 
 	LargeLocalStorage.prototype = {
@@ -151,6 +195,14 @@ var LargeLocalStorage = (function(Q) {
 		* Whether or not LLS is ready to store data.
 		* The `initialized` property can be used to
 		* await initialization.
+		* @example
+		*	// may or may not be true
+		*	storage.ready();
+		*	
+		*	storage.initialized.then(function() {
+		*		// always true
+		*		storage.ready();
+		*	})
 		* @method ready
 		*/
 		ready: function() {
@@ -172,7 +224,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method ls
 		* @param {string} [docKey]
-		* @returns {promise}
+		* @returns {promise} resolved with the listing, rejected if the listing fails.
 		*/
 		ls: function(docKey) {
 			this._checkAvailability();
@@ -186,6 +238,17 @@ var LargeLocalStorage = (function(Q) {
 		* Returns a promise that is fulfilled when the
 		* removal completes.
 		*
+		* If no docKey is specified, this throws an error.
+		*
+		* To remove all files in LargeLocalStorage call
+		* `lls.clear();`
+		*
+		* To remove all attachments that were written without
+		* a docKey, call `lls.rm('__emptydoc__');`
+		*
+		* rm works this way to ensure you don't lose
+		* data due to an accidently undefined variable.
+		*
 		* @example
 		* 	stoarge.rm('exampleDoc').then(function() {
 		*		alert('doc and all attachments were removed');
@@ -193,11 +256,27 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method rm
 		* @param {string} docKey
-		* @returns {promise}
+		* @returns {promise} resolved when removal completes, rejected if the removal fails.
 		*/
 		rm: function(docKey) {
 			this._checkAvailability();
 			return this._impl.rm(docKey);
+		},
+
+		/**
+		* An explicit way to remove all documents and
+		* attachments from LargeLocalStorage.
+		*
+		* @example
+		*	storage.clear().then(function() {
+		*		alert('all data has been removed');
+		*	});
+		* 
+		* @returns {promise} resolve when clear completes, rejected if clear fails.
+		*/
+		clear: function() {
+			this._checkAvailability();
+			return this._impl.clear();
 		},
 
 		/**
@@ -212,7 +291,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method getContents
 		* @param {string} docKey
-		* @returns {promise}
+		* @returns {promise} resolved with the contents when the get completes
 		*/
 		getContents: function(docKey) {
 			this._checkAvailability();
@@ -250,13 +329,13 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method getAttachment
-		* @param {string} [docKey] Defaults to __nodoc__
+		* @param {string} [docKey] Defaults to `__emptydoc__`
 		* @param {string} attachKey key of the attachment
 		* @returns {promise} fulfilled with the attachment or
 		* rejected if it could not be found.  code: 1
 		*/
 		getAttachment: function(docKey, attachKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAttachment(docKey, attachKey);
 		},
@@ -271,14 +350,14 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method setAttachment
-		* @param {string} [docKey] Defaults to __nodoc__
+		* @param {string} [docKey] Defaults to `__emptydoc__`
 		* @param {string} attachKey key for the attachment
 		* @param {any} attachment data
 		* @returns {promise} resolved when the write completes.  Rejected
 		* if an error occurs.
 		*/
 		setAttachment: function(docKey, attachKey, data) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.setAttachment(docKey, attachKey, data);
 		},
@@ -299,12 +378,12 @@ var LargeLocalStorage = (function(Q) {
 		* lower level details to improve performance.
 		*
 		* @method getAttachmentURL
-		* @param {string} [docKey] Identifies the document.  Defaults to __nodoc__
+		* @param {string} [docKey] Identifies the document.  Defaults to `__emptydoc__`
 		* @param {string} attachKey Identifies the attachment.
 		* @returns {promose} promise that is resolved with the attachment url.
 		*/
 		getAttachmentURL: function(docKey, attachKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAttachmentURL(docKey, attachKey);
 		},
@@ -326,12 +405,12 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method getAllAttachments
-		* @param {string} [docKey] Identifies the document.  Defaults to __nodoc__
+		* @param {string} [docKey] Identifies the document.  Defaults to `__emptydoc__`
 		* @returns {promise} Promise that is resolved with all of the attachments for
 		* the given document.
 		*/
 		getAllAttachments: function(docKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAllAttachments(docKey);
 		},
@@ -348,12 +427,12 @@ var LargeLocalStorage = (function(Q) {
 		* 	})
 		*
 		* @method getAllAttachmentURLs
-		* @param {string} [docKey] Identifies the document.  Defaults to the __nodoc__ document.
+		* @param {string} [docKey] Identifies the document.  Defaults to the `__emptydoc__` document.
 		* @returns {promise} Promise that is resolved with all of the attachment
 		* urls for the given doc.
 		*/
 		getAllAttachmentURLs: function(docKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.getAllAttachmentURLs(docKey);
 		},
@@ -374,6 +453,7 @@ var LargeLocalStorage = (function(Q) {
 		*
 		* @method revokeAttachmentURL
 		* @param {string} url The URL as returned by `getAttachmentURL` or `getAttachmentURLs`
+		* @returns {void}
 		*/
 		revokeAttachmentURL: function(url) {
 			this._checkAvailability();
@@ -387,15 +467,16 @@ var LargeLocalStorage = (function(Q) {
 		* 	storage.rmAttachment('exampleDoc', 'someAttachment').then(function() {
 		* 		alert('exampleDoc/someAttachment removed');
 		* 	}).catch(function(e) {
-		*		alert('Attachment removal failed: ' e);
+		*		alert('Attachment removal failed: ' + e);
 		* 	});
 		*
 		* @method rmAttachment
 		* @param {string} docKey
 		* @param {string} attachKey
+		* @returns {promise} Promise that is resolved once the remove completes
 		*/
 		rmAttachment: function(docKey, attachKey) {
-			if (!docKey) docKey = '__nodoc__';
+			if (!docKey) docKey = '__emptydoc__';
 			this._checkAvailability();
 			return this._impl.rmAttachment(docKey, attachKey);
 		},

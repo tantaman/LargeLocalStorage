@@ -1,2 +1,2 @@
 glob.LargeLocalStorage = LargeLocalStorage;
-})(this);
+}).call(this, this);

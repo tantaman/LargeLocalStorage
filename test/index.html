@@ -15,11 +15,27 @@
   <!-- assertion framework -->
   <script src="lib/chai.js"></script>
   <script>expect = chai.expect</script>
-  <!-- Load application -->
+  <script src="lib/sinon.js"></script>
+  <script>
+  function countdown(n, cb) {
+    var args = [];
+    return function() {
+      for (var i = 0; i < arguments.length; ++i)
+        args.push(arguments[i]);
+      n -= 1;
+      if (n == 0)
+        cb.apply(this, args);
+    }
+  }
+  window.runMocha = countdown(2, function() {
+      var runner = mocha.run();
+  });
+  </script>
   <script src="../bower_components/jquery/jquery.js"></script>
-  <!-- trigger the mocha runner -->
   <script src="../bower_components/q/q.js"></script>
   <script src="../dist/LargeLocalStorage.js"></script>
+  <script src="../dist/contrib/URLCache.js"></script>
   <script src="spec/LargeLocalStorageTest.js"></script>
+  <script src="spec/URLCacheTest.js"></script>
 </body>
 </html>

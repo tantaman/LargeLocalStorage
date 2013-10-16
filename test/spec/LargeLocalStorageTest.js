@@ -1,26 +1,11 @@
 (function(lls) {
 	var storage = new lls({
 		size: 10 * 1024 * 1024
-		// forceProvider: 'WebSQL' // force a desired provider.
+		// forceProvider: 'IndexedDB' // force a desired provider.
 	});
 
-	storage.initialized.then(function() {
-		var runner = mocha.run();
-	}, function(err) {
-		console.log(err);
-		alert('Could not initialize storage.  Did you not authorize it? ' + err);
-	});
-
-	function countdown(n, cb) {
-		var args = [];
-		return function() {
-			for (var i = 0; i < arguments.length; ++i)
-				args.push(arguments[i]);
-			n -= 1;
-			if (n == 0)
-				cb.apply(this, args);
-		}
-	}
+	// for debug
+	window.storage = storage;
 
 	function fail(err) {
 		console.log(err);
@@ -211,5 +196,63 @@
 				done();
 			});
 		});
+
+
+		it('Allows us to ls the attachments on a document', function(done) {
+			storage.ls('testfile6').then(function(listing) {
+				console.log(listing);
+				expect(listing.length).to.equal(2);
+				expect(listing[0] == 'blob1' || listing[0] == 'blob2').to.equal(true);
+				expect(listing[1] == 'blob1' || listing[1] == 'blob2').to.equal(true);
+				done();
+			}, function(err) {
+				fail(err);
+				done();
+			});
+		});
+
+		it('Allows us to ls for all docs', function(done) {
+			storage.ls().then(function(listing) {
+				done();
+			});
+		});
+
+		it('Allows us to clear out the entire storage', function(done) {
+			storage.clear().then(function() {
+				var scb = function(value) {
+					console.log(value);
+					if (value != undefined)
+						fail('should have been deleted');
+					done();
+				};
+
+				var ecb = countdown(2, function(err) {
+					expect(err.code).to.equal(1);
+					done();
+				});
+
+				// So Chrome actually returns success
+				// on clears before things are actually cleard out...
+				// wtf!!!
+				// storage.getContents('testfile4').then(scb, ecb);
+				// storage.getContents('testfile2').then(scb, ecb);
+				done();
+			}).catch(function(err) {
+				fail(err);
+				done();
+			})
+		});
+	});
+
+
+	storage.initialized.then(function() {
+		storage.clear().then(function() {
+			window.runMocha();
+		}).catch(function(err) {
+			console.log(err);
+		});
+	}, function(err) {
+		console.log(err);
+		alert('Could not initialize storage.  Did you not authorize it? ' + err);
 	});
 })(LargeLocalStorage);

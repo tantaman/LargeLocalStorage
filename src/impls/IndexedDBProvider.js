@@ -119,6 +119,67 @@ var IndexedDBProvider = (function(Q) {
 			return deferred.promise;
 		},
 
+		ls: function(docKey) {
+			var deferred = Q.defer();
+
+			if (!docKey) {
+				// list docs
+				var store = 'files';
+			} else {
+				// list attachments
+				var store = 'attachments';
+			}
+
+			var transaction = this._db.transaction([store], 'readonly');
+			var cursor = transaction.objectStore(store).openCursor();
+			var listing = [];
+
+			cursor.onsuccess = function(e) {
+				var cursor = e.target.result;
+				if (cursor) {
+					listing.push(!docKey ? cursor.key : cursor.key.split('/')[1]);
+					cursor.continue();
+				} else {
+					deferred.resolve(listing);
+				}
+			};
+
+			cursor.onerror = function(e) {
+				deferred.reject(e);
+			};
+
+			return deferred.promise;
+		},
+
+		clear: function() {
+			var deferred1 = Q.defer();
+			var deferred2 = Q.defer();
+
+			var t = this._db.transaction(['attachments', 'files'], 'readwrite');
+
+
+			var req1 = t.objectStore('attachments').clear();
+			var req2 = t.objectStore('files').clear();
+
+			req1.onsuccess = function() {
+				deferred1.resolve();
+			};
+
+			req2.onsuccess = function() {
+				deferred2.resolve();
+			};
+
+			req1.onerror = function(err) {
+				deferred1.reject(err);
+			};
+
+			req2.onerror = function(err) {
+				deferred2.reject(err);
+			};
+
+			return Q.all([deferred1, deferred2]);
+		},
+
 		getAllAttachments: function(docKey) {
 			var deferred = Q.defer();
 			var self = this;
@@ -238,7 +299,7 @@ var IndexedDBProvider = (function(Q) {
 	};
 
 	return {
-		init: function() {
+		init: function(config) {
 			var deferred = Q.defer();
 
 			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
@@ -250,7 +311,7 @@ var IndexedDBProvider = (function(Q) {
 				return deferred.promise;
 			}
 
-			var request = indexedDB.open("largelocalstorage", dbVersion);
+			var request = indexedDB.open(config.name, dbVersion);
 
 			function createObjectStore(db) {
 				db.createObjectStore("files");

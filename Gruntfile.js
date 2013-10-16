@@ -11,6 +11,7 @@ module.exports = function (grunt) {
 			},
 			scripts: {
 				src: ['src/header.js',
+					  'src/pipeline.js',
 					  'src/impls/utils.js',
 					  'src/impls/FilesystemAPIProvider.js',
 					  'src/impls/IndexedDBProvider.js',

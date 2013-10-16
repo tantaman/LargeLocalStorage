@@ -86,6 +86,55 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
+		ls: function(docKey) {
+			var deferred = Q.defer();
+
+			var select;
+			var field;
+			if (!docKey) {
+				select = 'SELECT fname FROM files';
+				field = 'fname';
+			} else {
+				select = 'SELECT akey FROM attachments WHERE fname = ?';
+				field = 'akey';
+			}
+
+			this._db.transaction(function(tx) {
+				tx.executeSql(select, docKey ? [docKey] : [],
+				function(tx, res) {
+					var listing = [];
+					for (var i = 0; i < res.rows.length; ++i) {
+						listing.push(res.rows.item(i)[field]);
+					}
+
+					deferred.resolve(listing);
+				}, function(err) {
+					deferred.reject(err);
+				});
+			});
+
+			return deferred.promise;
+		},
+
+		clear: function() {
+			var deffered1 = Q.defer();
+			var deffered2 = Q.defer();
+
+			this._db.transaction(function(tx) {
+				tx.executeSql('DELETE FROM files', function() {
+					deffered1.resolve();
+				});
+				tx.executeSql('DELETE FROM attachments', function() {
+					deffered2.resolve();
+				});
+			}, function(err) {
+				deffered1.reject(err);
+				deffered2.reject(err);
+			});
+
+			return Q.all([deffered1, deffered2]);
+		},
+
 		getAllAttachments: function(fname) {
 			var deferred = Q.defer();
 
@@ -178,7 +227,7 @@ var WebSQLProvider = (function(Q) {
 				return deferred.promise;
 			}
 
-			var db = openDb('largelocalstorage', '1.0', 'large local storage', config.size);
+			var db = openDb(config.name, '1.0', 'large local storage', config.size);
 
 			db.transaction(function(tx) {
 				tx.executeSql('CREATE TABLE IF NOT EXISTS files (fname unique, value)');
