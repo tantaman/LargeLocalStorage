@@ -106,12 +106,18 @@
                 <h4>Example</h4>
                 <pre class="code prettyprint"><code>var desiredCapacity = 50 * 1024 * 1024; // 50MB
 var storage = new LargeLocalStorage({
-    size: desiredCapacity
+    // desired capacity, in bytes.
+    size: desiredCapacity,
+
+     // optional name for your LLS database. Defaults to lls.
+    // This is the name given to the underlying
+    // IndexedDB or WebSQL DB or FSAPI Folder.
+    // LLS&#39;s with different names are independent.
+    name: &#39;myStorage&#39;
 
     // the following is an optional param 
     // that is useful for debugging.
     // force LLS to use a specific storage implementation
-
     // forceProvider: &#39;IndexedDB&#39; or &#39;WebSQL&#39; or &#39;FilesystemAPI&#39;
 });
 storage.initialized.then(function(capacity) {
@@ -137,7 +143,7 @@ lls.<span class="me1">getAllAttachments</span><span class="br0">(</span>[docKey]
                 <h4>Arguments</h4>
                 <ol>
                     
-                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to <strong>nodoc</strong></li>
+                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to <code>__emptydoc__</code></li>
                     
                 </ol>
                 <h4>Returns</h4>
@@ -170,7 +176,7 @@ lls.<span class="me1">getAllAttachmentURLs</span><span class="br0">(</span>[docK
                 <h4>Arguments</h4>
                 <ol>
                     
-                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to the <strong>nodoc</strong> document.</li>
+                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to the <code>__emptydoc__</code> document.</li>
                     
                 </ol>
                 <h4>Returns</h4>
@@ -198,7 +204,7 @@ lls.<span class="me1">getAttachment</span><span class="br0">(</span>[docKey], at
                 <h4>Arguments</h4>
                 <ol>
                     
-                    <li><code>docKey</code> <em>(String)</em>: Defaults to <strong>nodoc</strong></li>
+                    <li><code>docKey</code> <em>(String)</em>: Defaults to <code>__emptydoc__</code></li>
                     
                     <li><code>attachKey</code> <em>(String)</em>: key of the attachment</li>
                     
@@ -228,7 +234,7 @@ lls.<span class="me1">getAttachmentURL</span><span class="br0">(</span>[docKey],
                 <h4>Arguments</h4>
                 <ol>
                     
-                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to <strong>nodoc</strong></li>
+                    <li><code>docKey</code> <em>(String)</em>: Identifies the document.  Defaults to <code>__emptydoc__</code></li>
                     
                     <li><code>attachKey</code> <em>(String)</em>: Identifies the attachment.</li>
                     
@@ -300,7 +306,7 @@ and retrieval of JS objects?</p>
                     
                 </ol>
                 <h4>Returns</h4>
-                <p><em>(Promise)</em>: </p>
+                <p><em>(Promise)</em>: resolved with the contents when the get completes</p>
                 <h4>Example</h4>
                 <pre class="code prettyprint"><code>storage.getContents(&#39;exampleDoc&#39;).then(function(contents) {
     alert(contents);
@@ -327,7 +333,7 @@ the listing.</p>
                     
                 </ol>
                 <h4>Returns</h4>
-                <p><em>(Promise)</em>: </p>
+                <p><em>(Promise)</em>: resolved with the listing, rejected if the listing fails.</p>
                 <h4>Example</h4>
                 <pre class="code prettyprint"><code>storage.ls().then(function(docKeys) {
     console.log(docKeys);
@@ -353,7 +359,14 @@ await initialization.</p>
                 <h4>Returns</h4>
                 <p><em>()</em>: </p>
                 <h4>Example</h4>
-                
+                <pre class="code prettyprint"><code>// may or may not be true
+storage.ready();
+
+storage.initialized.then(function() {
+    // always true
+    storage.ready();
+})</code></pre>
+
             </div>
             
             <div>
@@ -376,7 +389,7 @@ should be revoked by LLS and not <code>URL.revokeObjectURL</code></p>
                     
                 </ol>
                 <h4>Returns</h4>
-                <p><em>()</em>: </p>
+                <p><em>(Void)</em>: </p>
                 <h4>Example</h4>
                 <pre class="code prettyprint"><code>storage.getAttachmentURL(&#39;doc&#39;, &#39;attach&#39;).then(function(url) {
     // do something with the URL
@@ -396,6 +409,13 @@ lls.<span class="me1">rm</span><span class="br0">(</span>docKey<span class="br0"
 of its attachments.</p>
 <p>Returns a promise that is fulfilled when the
 removal completes.</p>
+<p>If no docKey is specified, this throws an error.</p>
+<p>To remove all files in LargeLocalStorage call
+<code>lls.clear();</code></p>
+<p>To remove all attachments that were written without
+a docKey, call <code>lls.rm(&#39;__emptydoc__&#39;);</code></p>
+<p>rm works this way to ensure you don&#39;t lose
+data due to an accidently undefined variable.</p>
 
                 <h4>Arguments</h4>
                 <ol>
@@ -404,7 +424,7 @@ removal completes.</p>
                     
                 </ol>
                 <h4>Returns</h4>
-                <p><em>(Promise)</em>: </p>
+                <p><em>(Promise)</em>: resolved when removal completes, rejected if the removal fails.</p>
                 <h4>Example</h4>
                 <pre class="code prettyprint"><code>stoarge.rm(&#39;exampleDoc&#39;).then(function() {
     alert(&#39;doc and all attachments were removed&#39;);
@@ -430,12 +450,12 @@ lls.<span class="me1">rmAttachment</span><span class="br0">(</span>docKey, attac
                     
                 </ol>
                 <h4>Returns</h4>
-                <p><em>()</em>: </p>
+                <p><em>(Promise)</em>: Promise that is resolved once the remove completes</p>
                 <h4>Example</h4>
                 <pre class="code prettyprint"><code>storage.rmAttachment(&#39;exampleDoc&#39;, &#39;someAttachment&#39;).then(function() {
     alert(&#39;exampleDoc/someAttachment removed&#39;);
 }).catch(function(e) {
-    alert(&#39;Attachment removal failed: &#39; e);
+    alert(&#39;Attachment removal failed: &#39; + e);
 });</code></pre>
 
             </div>
@@ -453,7 +473,7 @@ by <code>docKey</code> and <code>attachKey</code>.</p>
                 <h4>Arguments</h4>
                 <ol>
                     
-                    <li><code>docKey</code> <em>(String)</em>: Defaults to <strong>nodoc</strong></li>
+                    <li><code>docKey</code> <em>(String)</em>: Defaults to <code>__emptydoc__</code></li>
                     
                     <li><code>attachKey</code> <em>(String)</em>: key for the attachment</li>
                     
