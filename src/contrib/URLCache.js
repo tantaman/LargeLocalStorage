@@ -117,6 +117,15 @@ LargeLocalStorage.URLCache = (function() {
 		return promise;
 	}
 
+	function clear() {
+		for (var url in this._cache.reverse) {
+			this.revokeAttachmentURL.call(this._lls, url);
+		}
+
+		this._cache.reverse = {};
+		this._cache.main = {};
+	}
+
 	var defaultOptions = {
 		manageRevocation: true
 	};

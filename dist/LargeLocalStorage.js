@@ -1558,4 +1558,4 @@ var LargeLocalStorage = (function(Q) {
 	return LargeLocalStorage;
 })(Q);
 glob.LargeLocalStorage = LargeLocalStorage;
-})(this);
+}).call(this, this);
