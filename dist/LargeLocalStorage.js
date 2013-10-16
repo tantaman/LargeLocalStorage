@@ -275,7 +275,11 @@ var FilesystemAPIProvider = (function(Q) {
 		return function(e) {
 			console.log(e);
 			console.log(msg);
-			deferred.reject(e);
+			if (e.code == 1) {
+				deferred.resolve(undefined);
+			} else {
+				deferred.reject(e);
+			}
 		}
 	}
 
@@ -339,13 +343,7 @@ var FilesystemAPIProvider = (function(Q) {
 
 					reader.readAsText(file);
 				}, makeErrorHandler(deferred));
-			}, function(err) {
-				if (err.code == 1) {
-					deferred.resolve(undefined);
-				} else {
-					deferred.reject(err);
-				}
-			});
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},

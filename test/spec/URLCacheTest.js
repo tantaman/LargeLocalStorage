@@ -29,11 +29,7 @@
 					docKey: 'doc',
 					attachKey: 'attach'
 				});
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
 		it('Removes the URL from the cache when updating the attachment',
@@ -42,11 +38,7 @@
 			.then(function() {
 				expect(cacheObj.main.doc.attach).to.equal(undefined);
 				expect(cacheObj.reverse).to.eql({});
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
 		it('Removes the URL from the cache when removing the attachment',
@@ -59,11 +51,7 @@
 			}).then(function() {
 				expect(cacheObj.main.doc.attach).to.equal(undefined);
 				expect(cacheObj.reverse[theUrl]).to.equal(undefined);
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
 		it('Removes the URL from the cache when removing the attachment via removing the host document',
@@ -74,11 +62,7 @@
 			}).then(function() {
 				expect(cacheObj.main.doc2).to.equal(undefined);
 				expect(cacheObj.reverse).to.eql({});
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
 		it('Removes the URL from the cache when revoking the URL',
@@ -95,11 +79,7 @@
 				storage.revokeAttachmentURL(url);
 				expect(cacheObj.main.doc3.attach).to.equal(undefined);
 				expect(cacheObj.reverse).to.eql({});
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
 		it('Removes all URLs when emptying the database',
@@ -111,11 +91,7 @@
 			}).then(function() {
 				expect(cacheObj.reverse).to.eql({});
 				expect(cacheObj.main).to.eql({});
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done(err);
-			});
+			}).done(done);
 		});
 	});
 	}
