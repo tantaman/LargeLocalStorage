@@ -523,5 +523,7 @@ var LargeLocalStorage = (function(Q) {
 		}
 	};
 
+	LargeLocalStorage.contrib = {};
+
 	return LargeLocalStorage;
 })(Q);

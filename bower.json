@@ -1,8 +1,19 @@
 {
-  "name": "LargeLocalStorage",
+	"name": "lls",
+	"version": "0.1.0",
+	"main": "dist/LargeLocalStorage.js",
+	"ignore": [
+		"examples",
+		"src",
+		"test"
+	],
+
+	"dependencies": {
+		"q": "~0.9.7"
+	},
+
 	"devDependencies": {
-		"jquery": "2.0.3",
-		"q": "0.9.7",
-		"bootstrap": "3.0.0"
+		"jquery": "~2.0.3",
+		"bootstrap": "~3.0.0"
 	}
 }
