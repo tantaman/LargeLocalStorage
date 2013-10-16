@@ -101,7 +101,7 @@ var IndexedDBProvider = (function(Q) {
 			var self = this;
 			get.onsuccess = function(e) {
 				if (!e.target.result) {
-					deferred.reject({code: 1});
+					deferred.resolve(undefined);
 					return;
 				}
 

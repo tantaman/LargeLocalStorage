@@ -69,7 +69,13 @@ var FilesystemAPIProvider = (function(Q) {
 
 					reader.readAsText(file);
 				}, makeErrorHandler(deferred));
-			}, makeErrorHandler(deferred));
+			}, function(err) {
+				if (err.code == 1) {
+					deferred.resolve(undefined);
+				} else {
+					deferred.reject(err);
+				}
+			});
 
 			return deferred.promise;
 		},
@@ -193,11 +199,11 @@ var FilesystemAPIProvider = (function(Q) {
 				},
 				function(err) {
 					if (err.code === FileError.NOT_FOUND_ERROR) {
-						deferred.resolve({code: 1});
+						deferred.resolve();
 					} else {
 						makeErrorHandler(deferred, "get attachment dir for rm " + attachmentsDir)(err);
 					}
-			});
+				});
 
 			return Q.all([deferred, finalDeferred]);
 		},
@@ -210,7 +216,13 @@ var FilesystemAPIProvider = (function(Q) {
 				fileEntry.file(function(file) {
 					deferred.resolve(file);
 				}, makeErrorHandler(deferred, "getting attachment file"));
-			}, makeErrorHandler(deferred, "getting attachment file entry"));
+			}, function(err) {
+				if (err.code == 1) {
+					deferred.resolve(undefined);
+				} else {
+					deferred.reject(err);
+				}
+			});
 
 			return deferred.promise;
 		},

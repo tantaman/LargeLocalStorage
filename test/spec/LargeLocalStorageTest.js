@@ -133,19 +133,22 @@
 					return storage.rm("testfile5");
 				}).then(function() {
 					return storage.getAttachment("testfile5", "pie");
-				}).then(function() {
-					fail();
-					done();
-				}).catch(function(err) {
-					expect(err != null).to.equal(true);
+				}).then(function(val) {
+					console.log(val);
+					expect(val).to.equal(undefined);
+
 					storage.getAttachment("testfile5", "pie2")
 					.then(function(a) {
-						fail(a);
+						expect(a).to.equal(undefined);
 						done();
 					}, function(err) {
-						expect(err != null).to.equal(true);
+						fail(err);
 						done();
 					});
+					done();
+				}).catch(function(err) {
+					fail(err);
+					done();
 				});
 			});
 		});
