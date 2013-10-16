@@ -13,7 +13,11 @@ To make things worse:
 `LargeLocalStorage` bridges all of that to give you a large capacity (up to several GB when authorized by the user) key-value store in the browser
 (IE 10, Chrome, Safari 6+, Firefox, Opera). 
 
-## Basic Rundown
+* [docs](http://tantaman.github.io/LargeLocalStorage/doc/classes/LargeLocalStorage.html)
+* [tests](http://tantaman.github.io/LargeLocalStorage/test/)
+* [demo app](http://tantaman.github.io/LargeLocalStorage/examples/album/)
+
+## Basic Rundown / Examples
 
 ### Creating a database
 
@@ -119,10 +123,10 @@ storage.rm('docKey').then(function() {
 storage.clear();
 ```
 
-For more:
+More:
 * Read the [docs](http://tantaman.github.io/LargeLocalStorage/doc/classes/LargeLocalStorage.html)
 * Run the [tests](http://tantaman.github.io/LargeLocalStorage/test/)
-* View the [examples](http://tantaman.github.io/LargeLocalStorage/examples/album/)
+* View the [demo app](http://tantaman.github.io/LargeLocalStorage/examples/album/)
 
 ##Including
 
