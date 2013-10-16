@@ -152,8 +152,8 @@ var IndexedDBProvider = (function(Q) {
 		},
 
 		clear: function() {
-			var deferred1 = Q.defer();
-			var deferred2 = Q.defer();
+			var deferred = Q.defer();
+			var finalDeferred = Q.defer();
 
 			var t = this._db.transaction(['attachments', 'files'], 'readwrite');
 
@@ -162,22 +162,22 @@ var IndexedDBProvider = (function(Q) {
 			var req2 = t.objectStore('files').clear();
 
 			req1.onsuccess = function() {
-				deferred1.resolve();
+				deferred.promise.then(finalDeferred.resolve);
 			};
 
 			req2.onsuccess = function() {
-				deferred2.resolve();
+				deferred.resolve();
 			};
 
 			req1.onerror = function(err) {
-				deferred1.reject(err);
+				finalDeferred.reject(err);
 			};
 
 			req2.onerror = function(err) {
-				deferred2.reject(err);
+				finalDeferred.reject(err);
 			};
 
-			return Q.all([deferred1, deferred2]);
+			return finalDeferred.promise;
 		},
 
 		getAllAttachments: function(docKey) {

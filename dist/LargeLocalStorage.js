@@ -269,16 +269,17 @@ var utils = (function() {
 	}
 })();
 var FilesystemAPIProvider = (function(Q) {
-	function makeErrorHandler(deferred, msg) {
+	function makeErrorHandler(deferred, finalDeferred) {
 		// TODO: normalize the error so
 		// we can handle it upstream
 		return function(e) {
-			console.log(e);
-			console.log(msg);
 			if (e.code == 1) {
 				deferred.resolve(undefined);
 			} else {
-				deferred.reject(e);
+				if (finalDeferred)
+					finalDeferred.reject(e);
+				else
+					deferred.reject(e);
 			}
 		}
 	}
@@ -373,8 +374,8 @@ var FilesystemAPIProvider = (function(Q) {
 					}
 
 					fileWriter.write(blob);
-				}, makeErrorHandler(deferred, "creating writer"));
-			}, makeErrorHandler(deferred, "getting file entry"));
+				}, makeErrorHandler(deferred));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -450,30 +451,24 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getFile(path, {create:false},
 				function(entry) {
 					entry.remove(function() {
-						finalDeferred.resolve();
+						deferred.promise.then(finalDeferred.resolve);
 					}, function(err) {
 						finalDeferred.reject(err);
 					});
 				},
-				makeErrorHandler(finalDeferred, "getting file entry"));
+				makeErrorHandler(finalDeferred));
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 				function(entry) {
 					entry.removeRecursively(function() {
 						deferred.resolve();
 					}, function(err) {
-						deferred.reject(err);
+						finalDeferred.reject(err);
 					});
 				},
-				function(err) {
-					if (err.code === FileError.NOT_FOUND_ERROR) {
-						deferred.resolve();
-					} else {
-						makeErrorHandler(deferred, "get attachment dir for rm " + attachmentsDir)(err);
-					}
-				});
+				makeErrorHandler(deferred, finalDeferred));
 
-			return Q.all([deferred, finalDeferred]);
+			return finalDeferred.promise;
 		},
 
 		getAttachment: function(docKey, attachKey) {
@@ -482,8 +477,11 @@ var FilesystemAPIProvider = (function(Q) {
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
 				fileEntry.file(function(file) {
-					deferred.resolve(file);
-				}, makeErrorHandler(deferred, "getting attachment file"));
+					if (file.size == 0)
+						deferred.resolve(undefined);
+					else
+						deferred.resolve(file);
+				}, makeErrorHandler(deferred));
 			}, function(err) {
 				if (err.code == 1) {
 					deferred.resolve(undefined);
@@ -573,7 +571,7 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getDirectory(this._prefix + attachInfo.dir,
 			{create:true}, function(dirEntry) {
 				deferred.resolve(self.setContents(attachInfo.path, data));
-			}, makeErrorHandler(deferred, "getting attachment dir"));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -587,8 +585,8 @@ var FilesystemAPIProvider = (function(Q) {
 				function(entry) {
 					entry.remove(function() {
 						deferred.resolve();
-					}, makeErrorHandler(deferred, "removing attachment"));
-			}, makeErrorHandler(deferred, "getting attachment file entry for rm"));
+					}, makeErrorHandler(deferred));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -791,8 +789,8 @@ var IndexedDBProvider = (function(Q) {
 		},
 
 		clear: function() {
-			var deferred1 = Q.defer();
-			var deferred2 = Q.defer();
+			var deferred = Q.defer();
+			var finalDeferred = Q.defer();
 
 			var t = this._db.transaction(['attachments', 'files'], 'readwrite');
 
@@ -801,22 +799,22 @@ var IndexedDBProvider = (function(Q) {
 			var req2 = t.objectStore('files').clear();
 
 			req1.onsuccess = function() {
-				deferred1.resolve();
+				deferred.promise.then(finalDeferred.resolve);
 			};
 
 			req2.onsuccess = function() {
-				deferred2.resolve();
+				deferred.resolve();
 			};
 
 			req1.onerror = function(err) {
-				deferred1.reject(err);
+				finalDeferred.reject(err);
 			};
 
 			req2.onerror = function(err) {
-				deferred2.reject(err);
+				finalDeferred.reject(err);
 			};
 
-			return Q.all([deferred1, deferred2]);
+			return finalDeferred.promise;
 		},
 
 		getAllAttachments: function(docKey) {

@@ -1,7 +1,7 @@
 (function(lls) {
 	var storage = new lls({
-		size: 10 * 1024 * 1024
-		// forceProvider: 'IndexedDB' // force a desired provider.
+		size: 10 * 1024 * 1024,
+		forceProvider: 'WebSQL' // force a desired provider.
 	});
 
 	// for debug
@@ -195,12 +195,8 @@
 					done();
 				});
 
-				// So Chrome actually returns success
-				// on clears before things are actually cleard out...
-				// wtf!!!
-				// storage.getContents('testfile4').then(scb, ecb);
-				// storage.getContents('testfile2').then(scb, ecb);
-				done();
+				storage.getContents('testfile4').then(scb, ecb);
+				storage.getContents('testfile2').then(scb, ecb);
 			}).done();
 		});
 	});
