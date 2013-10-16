@@ -13,9 +13,10 @@ function PipeContext(handlers, nextMehod, end) {
 
 PipeContext.prototype = {
 	next: function() {
-		var args = Array.prototype.slice.call(arguments, 0);
-		args.unshift(this);
-		return this._next.apply(this, args);
+		// var args = Array.prototype.slice.call(arguments, 0);
+		// args.unshift(this);
+		this.__pipectx = this;
+		return this._next.apply(this, arguments);
 	},
 
 	_nextHandler: function() {
@@ -46,16 +47,21 @@ function forward(ctx) {
 	return ctx.next.apply(ctx, Array.prototype.slice.call(arguments, 1));
 }
 
+function coerce(methodNames, handler) {
+	methodNames.forEach(function(meth) {
+		if (!handler[meth])
+			handler[meth] = forward;
+	});
+}
+
 var abstractPipeline = {
 	addFirst: function(name, handler) {
+		coerce(this._pipedMethodNames, handler);
 		this._handlers.unshift({name: name, handler: handler});
 	},
 
 	addLast: function(name, handler) {
-		this._pipedMethodNames.forEach(function(meth) {
-			if (!handler[meth])
-				handler[meth] = forward;
-		});
+		coerce(this._pipedMethodNames, handler);
 		this._handlers.push({name: name, handler: handler});
 	},
 
@@ -65,6 +71,7 @@ var abstractPipeline = {
  	name or a handler instance.
  	*/
 	addAfter: function(target, name, handler) {
+		coerce(this._pipedMethodNames, handler);
 		var handlers = this._handlers;
 		var len = handlers.length;
 		var i = indexOfHandler(handlers, len, target);
@@ -80,6 +87,7 @@ var abstractPipeline = {
 	a handler instance.
 	*/
 	addBefore: function(target, name, handler) {
+		coerce(this._pipedMethodNames, handler);
 		var handlers = this._handlers;
 		var len = handlers.length;
 		var i = indexOfHandler(handlers, len, target);
@@ -93,6 +101,7 @@ var abstractPipeline = {
 	Replace the handler specified by target.
 	*/
 	replace: function(target, newName, handler) {
+		coerce(this._pipedMethodNames, handler);
 		var handlers = this._handlers;
 		var len = handlers.length;
 		var i = indexOfHandler(handlers, len, target);
@@ -140,6 +149,7 @@ function createPipeline(pipedMethodNames) {
 
 		nextMethods[name] = new Function(
 			"var handler = this._nextHandler();" +
+			"handler.__pipectx = this.__pipectx;" +
 			"return handler." + name + ".apply(handler, arguments);");
 
 		pipelineProto[name] = new Function(
@@ -150,12 +160,16 @@ function createPipeline(pipedMethodNames) {
 	return new Pipeline(pipedMethodNames);
 }
 
+createPipeline.isPipeline = function(obj) {
+	return obj instanceof Pipeline;
+}
+
 if (typeof define === 'function' && define.amd) {
 	define(createPipeline);
 } else if (typeof exports === "object") {
 	module.exports = createPipeline;
 } else {
-	root.createPipeline = createPipeline;
+	root.pipeline = createPipeline;
 }
 
 })(this);

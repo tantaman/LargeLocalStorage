@@ -167,6 +167,27 @@ var LargeLocalStorage = (function(Q) {
 		* @property {promise} initialized
 		*/
 		this.initialized = deferred.promise;
+
+		var piped = pipeline([
+			'ready',
+			'ls',
+			'rm',
+			'clear',
+			'getContents',
+			'setContents',
+			'getAttachment',
+			'setAttachment',
+			'getAttachmentURL',
+			'getAllAttachments',
+			'getAllAttachmentURLs',
+			'revokeAttachmentURL',
+			'rmAttachment',
+			'getCapacity',
+			'initialized']);
+
+		piped.addLast('lls', this);
+		piped.initialized = this.initialized;
+		return piped;
 	}
 
 	LargeLocalStorage.prototype = {
