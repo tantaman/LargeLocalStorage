@@ -154,7 +154,7 @@ LargeLocalStorage.URLCache = (function() {
 		// Used internally for unit test verification
 		_addTo: function(lls, options) {
 			var cache = new URLCache(lls, options);
-			lls.addFirst('cache', cache);
+			lls.pipe.addFirst('cache', cache);
 			return cache;
 		}
 	}

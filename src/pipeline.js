@@ -135,14 +135,19 @@ function createPipeline(pipedMethodNames) {
 	var nextMethods = {};
 
 	function Pipeline(pipedMethodNames) {
-		this._handlers = [];
-		this._contextCtor = PipeContext;
-		this._nextMethods = nextMethods;
-		this.end = end;
-		this._pipedMethodNames = pipedMethodNames;
+		this.pipe = {
+			_handlers: [],
+			_contextCtor: PipeContext,
+			_nextMethods: nextMethods,
+			end: end,
+			_pipedMethodNames: pipedMethodNames
+		};
 	}
 
-	var pipelineProto = Pipeline.prototype = Object.create(abstractPipeline);
+	var pipeline = new Pipeline(pipedMethodNames);
+	for (var k in abstractPipeline) {
+		pipeline.pipe[k] = abstractPipeline[k];
+	}
 
 	pipedMethodNames.forEach(function(name) {
 		end[name] = endStubFunc;
@@ -152,12 +157,12 @@ function createPipeline(pipedMethodNames) {
 			"handler.__pipectx = this.__pipectx;" +
 			"return handler." + name + ".apply(handler, arguments);");
 
-		pipelineProto[name] = new Function(
-			"var ctx = new this._contextCtor(this._handlers, this._nextMethods." + name + ", this.end);"
+		pipeline[name] = new Function(
+			"var ctx = new this.pipe._contextCtor(this.pipe._handlers, this.pipe._nextMethods." + name + ", this.pipe.end);"
 			+ "return ctx.next.apply(ctx, arguments);");
 	});
 
-	return new Pipeline(pipedMethodNames);
+	return pipeline;
 }
 
 createPipeline.isPipeline = function(obj) {

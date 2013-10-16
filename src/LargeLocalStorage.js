@@ -185,7 +185,7 @@ var LargeLocalStorage = (function(Q) {
 			'getCapacity',
 			'initialized']);
 
-		piped.addLast('lls', this);
+		piped.pipe.addLast('lls', this);
 		piped.initialized = this.initialized;
 		return piped;
 	}
