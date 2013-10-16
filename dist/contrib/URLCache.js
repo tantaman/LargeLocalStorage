@@ -42,7 +42,7 @@ LargeLocalStorage.URLCache = (function() {
 			delete docCache[attachKey];
 			delete this.cache.reverse[url];
 			if (this.options.manageRevocation && needsRevoke)
-				this.llspipe.revokeAttachmentURL.call(this._lls, url, {bypassUrlCache: true});
+				this.llshandler.revokeAttachmentURL(url, {bypassUrlCache: true});
 		}
 
 		var docCache = this.cache.main[docKey];
@@ -71,7 +71,7 @@ LargeLocalStorage.URLCache = (function() {
 	function URLCache(llspipe, options) {
 		options = options || {};
 		this.options = defaults(options, defaultOptions);
-		this.llspipe = llspipe;
+		this.llshandler = llspipe.pipe.getHandler('lls').handler;
 		this.pending = {};
 		this.cache = {
 			main: {},
@@ -137,7 +137,7 @@ LargeLocalStorage.URLCache = (function() {
 
 		clear: function() {
 			for (var url in this.cache.reverse) {
-				this.llspipe.revokeAttachmentURL(url, {bypassUrlCache: true});
+				this.llshandler.revokeAttachmentURL(url, {bypassUrlCache: true});
 			}
 
 			this.cache.reverse = {};
@@ -147,15 +147,12 @@ LargeLocalStorage.URLCache = (function() {
 
 	return {
 		addTo: function(lls, options) {
-			lls.addFirst('cache', new URLCache(options));
-			return lls;
-		},
-
-		// Used internally for unit test verification
-		_addTo: function(lls, options) {
 			var cache = new URLCache(lls, options);
 			lls.pipe.addFirst('cache', cache);
-			return cache;
+			return {
+				lls: lls,
+				urlCache: cache
+			};
 		}
 	}
 })();

@@ -128,6 +128,13 @@ var abstractPipeline = {
 
 		if (i >= 0)
 			handlers.splice(i, 1);
+	},
+
+	getHandler: function(name) {
+		var i = indexOfHandler(this._handlers, this._handlers.length, name);
+		if (i >= 0)
+			return this._handlers[i];
+		return null;
 	}
 };
 
