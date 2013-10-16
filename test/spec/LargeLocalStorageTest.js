@@ -1,15 +1,16 @@
 (function(lls) {
 	var storage = new lls({
-		size: 10 * 1024 * 1024
-		// forceProvider: 'IndexedDB' // force a desired provider.
+		size: 10 * 1024 * 1024,
+		forceProvider: 'WebSQL' // force a desired provider.
 	});
 
 	// for debug
 	window.storage = storage;
 
 	function fail(err) {
-		console.log(err);
-		expect(true).to.equal(false);
+		console.error('I AM A FAILED TEST!');
+		// console.log(err);
+		// expect(true).to.equal(false);
 	}
 
 	function getAttachment(a, cb) {
@@ -43,11 +44,7 @@
 				return storage.getContents("testFile");
 			}).then(function(contents) {
 				expect(contents).to.equal("contents");
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			})
+			}).done(done);
 		});
 
 		// well.... maybe not anymore... need to think about this ability.
@@ -61,11 +58,7 @@
 				return storage.getContents("testfile2");
 			}).then(function(contents) {
 				expect(jsondoc).to.eql(JSON.parse(contents));
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
 		it('Allows items to be deleted', function(done) {
@@ -74,11 +67,8 @@
 			}).then(function() {
 				return storage.getContents("testfile3");
 			}).then(function(contents) {
-				expect("File should not have been found").to.equal("");
-			}).catch(function(err) {
-				expect(err != null).to.equal(true);
-				done();
-			});
+				expect(contents).to.equal(undefined);
+			}).done(done);
 		});
 
 
@@ -90,11 +80,7 @@
 					return storage.getAttachment("testfile4", "ele");
 				}).then(function(attach) {
 					expect(attach instanceof Blob).to.equal(true);
-					done();
-				}).catch(function(err) {
-					fail(err);
-					done();
-				});
+				}).done(done);
 			});
 		});
 
@@ -107,20 +93,13 @@
 				// filesystem api, indexeddb, or websql
 				expect(typeof url === 'string').to.equal(true);
 				$(document.body).append('<img src="' + url + '">');
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
 		it('Allows attachments to be deleted', function(done) {
 			storage.rmAttachment("testfile4", "ele").then(function() {
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			});
+				// ????
+			}).done(done);
 		});
 
 		it('Removes all attachments when removing a file', function(done) {
@@ -133,20 +112,14 @@
 					return storage.rm("testfile5");
 				}).then(function() {
 					return storage.getAttachment("testfile5", "pie");
-				}).then(function() {
-					fail();
-					done();
-				}).catch(function(err) {
-					expect(err != null).to.equal(true);
+				}).then(function(val) {
+					expect(val).to.equal(undefined);
+
 					storage.getAttachment("testfile5", "pie2")
 					.then(function(a) {
-						fail(a);
-						done();
-					}, function(err) {
-						expect(err != null).to.equal(true);
-						done();
-					});
-				});
+						expect(a).to.equal(undefined);
+					}).done(done);
+				}).done();
 			});
 		});
 
@@ -176,11 +149,7 @@
 					expect(attachments[1].docKey).to.equal('testfile6');
 					expect(attachments[0].attachKey.indexOf('blob')).to.equal(0);
 					expect(attachments[1].attachKey.indexOf('blob')).to.equal(0);
-					done();
-				}).catch(function(err) {
-					fail(err);
-					done();
-				});
+				}).done(done);
 			}
 		});
 
@@ -190,37 +159,32 @@
 				urls.forEach(function(url) {
 					$(document.body).append('<img src="' + url.url + '"></img>');
 				});
-				done();
-			}, function(e) {
-				fail(e);
-				done();
-			});
+			}).done(done);
 		});
 
 
 		it('Allows us to ls the attachments on a document', function(done) {
 			storage.ls('testfile6').then(function(listing) {
-				console.log(listing);
 				expect(listing.length).to.equal(2);
 				expect(listing[0] == 'blob1' || listing[0] == 'blob2').to.equal(true);
 				expect(listing[1] == 'blob1' || listing[1] == 'blob2').to.equal(true);
-				done();
-			}, function(err) {
-				fail(err);
-				done();
-			});
+			}).done(done);
 		});
 
+		// TODO: create a new db to test on so this isn't
+		// broken when updating other tests
 		it('Allows us to ls for all docs', function(done) {
 			storage.ls().then(function(listing) {
-				done();
-			});
+				expect(listing.indexOf('testfile4')).to.not.equal(-1);
+				expect(listing.indexOf('testFile')).to.not.equal(-1);
+				expect(listing.indexOf('testfile2')).to.not.equal(-1);
+				expect(listing.length).to.equal(3);
+			}).done(done);
 		});
 
 		it('Allows us to clear out the entire storage', function(done) {
 			storage.clear().then(function() {
 				var scb = function(value) {
-					console.log(value);
 					if (value != undefined)
 						fail('should have been deleted');
 					done();
@@ -231,16 +195,9 @@
 					done();
 				});
 
-				// So Chrome actually returns success
-				// on clears before things are actually cleard out...
-				// wtf!!!
-				// storage.getContents('testfile4').then(scb, ecb);
-				// storage.getContents('testfile2').then(scb, ecb);
-				done();
-			}).catch(function(err) {
-				fail(err);
-				done();
-			})
+				storage.getContents('testfile4').then(scb, ecb);
+				storage.getContents('testfile2').then(scb, ecb);
+			}).done();
 		});
 	});
 

@@ -1,4 +1,5 @@
 (function(glob) {
+	var undefined = {}.a;
 	
 
 /**
@@ -268,13 +269,18 @@ var utils = (function() {
 	}
 })();
 var FilesystemAPIProvider = (function(Q) {
-	function makeErrorHandler(deferred, msg) {
+	function makeErrorHandler(deferred, finalDeferred) {
 		// TODO: normalize the error so
 		// we can handle it upstream
 		return function(e) {
-			console.log(e);
-			console.log(msg);
-			deferred.reject(e);
+			if (e.code == 1) {
+				deferred.resolve(undefined);
+			} else {
+				if (finalDeferred)
+					finalDeferred.reject(e);
+				else
+					deferred.reject(e);
+			}
 		}
 	}
 
@@ -368,8 +374,8 @@ var FilesystemAPIProvider = (function(Q) {
 					}
 
 					fileWriter.write(blob);
-				}, makeErrorHandler(deferred, "creating writer"));
-			}, makeErrorHandler(deferred, "getting file entry"));
+				}, makeErrorHandler(deferred));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -385,13 +391,13 @@ var FilesystemAPIProvider = (function(Q) {
 			function(entry) {
 				var reader = entry.createReader();
 				readDirEntries(reader, []).then(function(entries) {
-					deferred.resolve(entries.map(function(entry) {
-						if (isRoot && entry.isDirectory) {
-							return entry.name.replace('-attachments', '');
-						} else {
-							return entry.name;
+					var listing = [];
+					entries.forEach(function(entry) {
+						if (!entry.isDirectory) {
+							listing.push(entry.name);
 						}
-					}));
+					});
+					deferred.resolve(listing);
 				});
 			}, function(error) {
 				deferred.reject(error);
@@ -445,30 +451,24 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getFile(path, {create:false},
 				function(entry) {
 					entry.remove(function() {
-						finalDeferred.resolve();
+						deferred.promise.then(finalDeferred.resolve);
 					}, function(err) {
 						finalDeferred.reject(err);
 					});
 				},
-				makeErrorHandler(finalDeferred, "getting file entry"));
+				makeErrorHandler(finalDeferred));
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 				function(entry) {
 					entry.removeRecursively(function() {
 						deferred.resolve();
 					}, function(err) {
-						deferred.reject(err);
+						finalDeferred.reject(err);
 					});
 				},
-				function(err) {
-					if (err.code === FileError.NOT_FOUND_ERROR) {
-						deferred.resolve({code: 1});
-					} else {
-						makeErrorHandler(deferred, "get attachment dir for rm " + attachmentsDir)(err);
-					}
-			});
+				makeErrorHandler(deferred, finalDeferred));
 
-			return Q.all([deferred, finalDeferred]);
+			return finalDeferred.promise;
 		},
 
 		getAttachment: function(docKey, attachKey) {
@@ -477,9 +477,18 @@ var FilesystemAPIProvider = (function(Q) {
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
 				fileEntry.file(function(file) {
-					deferred.resolve(file);
-				}, makeErrorHandler(deferred, "getting attachment file"));
-			}, makeErrorHandler(deferred, "getting attachment file entry"));
+					if (file.size == 0)
+						deferred.resolve(undefined);
+					else
+						deferred.resolve(file);
+				}, makeErrorHandler(deferred));
+			}, function(err) {
+				if (err.code == 1) {
+					deferred.resolve(undefined);
+				} else {
+					deferred.reject(err);
+				}
+			});
 
 			return deferred.promise;
 		},
@@ -562,7 +571,7 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getDirectory(this._prefix + attachInfo.dir,
 			{create:true}, function(dirEntry) {
 				deferred.resolve(self.setContents(attachInfo.path, data));
-			}, makeErrorHandler(deferred, "getting attachment dir"));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -576,8 +585,8 @@ var FilesystemAPIProvider = (function(Q) {
 				function(entry) {
 					entry.remove(function() {
 						deferred.resolve();
-					}, makeErrorHandler(deferred, "removing attachment"));
-			}, makeErrorHandler(deferred, "getting attachment file entry for rm"));
+					}, makeErrorHandler(deferred));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -729,7 +738,7 @@ var IndexedDBProvider = (function(Q) {
 			var self = this;
 			get.onsuccess = function(e) {
 				if (!e.target.result) {
-					deferred.reject({code: 1});
+					deferred.resolve(undefined);
 					return;
 				}
 
@@ -780,8 +789,8 @@ var IndexedDBProvider = (function(Q) {
 		},
 
 		clear: function() {
-			var deferred1 = Q.defer();
-			var deferred2 = Q.defer();
+			var deferred = Q.defer();
+			var finalDeferred = Q.defer();
 
 			var t = this._db.transaction(['attachments', 'files'], 'readwrite');
 
@@ -790,22 +799,22 @@ var IndexedDBProvider = (function(Q) {
 			var req2 = t.objectStore('files').clear();
 
 			req1.onsuccess = function() {
-				deferred1.resolve();
+				deferred.promise.then(finalDeferred.resolve);
 			};
 
 			req2.onsuccess = function() {
-				deferred2.resolve();
+				deferred.resolve();
 			};
 
 			req1.onerror = function(err) {
-				deferred1.reject(err);
+				finalDeferred.reject(err);
 			};
 
 			req2.onerror = function(err) {
-				deferred2.reject(err);
+				finalDeferred.reject(err);
 			};
 
-			return Q.all([deferred1, deferred2]);
+			return finalDeferred.promise;
 		},
 
 		getAllAttachments: function(docKey) {
@@ -1008,12 +1017,13 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql('SELECT value FROM files WHERE fname = ?', [docKey],
 				function(tx, res) {
 					if (res.rows.length == 0) {
-						deferred.reject({code: 1});
+						deferred.resolve(undefined);
 					} else {
 						deferred.resolve(res.rows.item(0).value);
 					}
 				});
 			}, function(err) {
+				consol.log(err);
 				deferred.reject(err);
 			});
 
@@ -1026,6 +1036,7 @@ var WebSQLProvider = (function(Q) {
 				tx.executeSql(
 				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [docKey, data]);
 			}, function(err) {
+				console.log(err);
 				deferred.reject(err);
 			}, function() {
 				deferred.resolve();
@@ -1036,10 +1047,12 @@ var WebSQLProvider = (function(Q) {
 
 		rm: function(docKey) {
 			var deferred = Q.defer();
+
 			this._db.transaction(function(tx) {
 				tx.executeSql('DELETE FROM files WHERE fname = ?', [docKey]);
 				tx.executeSql('DELETE FROM attachments WHERE fname = ?', [docKey]);
 			}, function(err) {
+				console.log(err);
 				deferred.reject(err);
 			}, function() {
 				deferred.resolve();
@@ -1056,7 +1069,7 @@ var WebSQLProvider = (function(Q) {
 				[fname, akey],
 				function(tx, res) {
 					if (res.rows.length == 0) {
-						deferred.reject({code: 1});
+						deferred.resolve(undefined);
 					} else {
 						deferred.resolve(dataURLToBlob(res.rows.item(0).value));
 					}

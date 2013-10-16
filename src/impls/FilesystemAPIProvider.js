@@ -1,11 +1,16 @@
 var FilesystemAPIProvider = (function(Q) {
-	function makeErrorHandler(deferred, msg) {
+	function makeErrorHandler(deferred, finalDeferred) {
 		// TODO: normalize the error so
 		// we can handle it upstream
 		return function(e) {
-			console.log(e);
-			console.log(msg);
-			deferred.reject(e);
+			if (e.code == 1) {
+				deferred.resolve(undefined);
+			} else {
+				if (finalDeferred)
+					finalDeferred.reject(e);
+				else
+					deferred.reject(e);
+			}
 		}
 	}
 
@@ -99,8 +104,8 @@ var FilesystemAPIProvider = (function(Q) {
 					}
 
 					fileWriter.write(blob);
-				}, makeErrorHandler(deferred, "creating writer"));
-			}, makeErrorHandler(deferred, "getting file entry"));
+				}, makeErrorHandler(deferred));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -116,13 +121,13 @@ var FilesystemAPIProvider = (function(Q) {
 			function(entry) {
 				var reader = entry.createReader();
 				readDirEntries(reader, []).then(function(entries) {
-					deferred.resolve(entries.map(function(entry) {
-						if (isRoot && entry.isDirectory) {
-							return entry.name.replace('-attachments', '');
-						} else {
-							return entry.name;
+					var listing = [];
+					entries.forEach(function(entry) {
+						if (!entry.isDirectory) {
+							listing.push(entry.name);
 						}
-					}));
+					});
+					deferred.resolve(listing);
 				});
 			}, function(error) {
 				deferred.reject(error);
@@ -176,30 +181,24 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getFile(path, {create:false},
 				function(entry) {
 					entry.remove(function() {
-						finalDeferred.resolve();
+						deferred.promise.then(finalDeferred.resolve);
 					}, function(err) {
 						finalDeferred.reject(err);
 					});
 				},
-				makeErrorHandler(finalDeferred, "getting file entry"));
+				makeErrorHandler(finalDeferred));
 
 			this._fs.root.getDirectory(attachmentsDir, {},
 				function(entry) {
 					entry.removeRecursively(function() {
 						deferred.resolve();
 					}, function(err) {
-						deferred.reject(err);
+						finalDeferred.reject(err);
 					});
 				},
-				function(err) {
-					if (err.code === FileError.NOT_FOUND_ERROR) {
-						deferred.resolve({code: 1});
-					} else {
-						makeErrorHandler(deferred, "get attachment dir for rm " + attachmentsDir)(err);
-					}
-			});
+				makeErrorHandler(deferred, finalDeferred));
 
-			return Q.all([deferred, finalDeferred]);
+			return finalDeferred.promise;
 		},
 
 		getAttachment: function(docKey, attachKey) {
@@ -208,9 +207,18 @@ var FilesystemAPIProvider = (function(Q) {
 			var deferred = Q.defer();
 			this._fs.root.getFile(attachmentPath, {}, function(fileEntry) {
 				fileEntry.file(function(file) {
-					deferred.resolve(file);
-				}, makeErrorHandler(deferred, "getting attachment file"));
-			}, makeErrorHandler(deferred, "getting attachment file entry"));
+					if (file.size == 0)
+						deferred.resolve(undefined);
+					else
+						deferred.resolve(file);
+				}, makeErrorHandler(deferred));
+			}, function(err) {
+				if (err.code == 1) {
+					deferred.resolve(undefined);
+				} else {
+					deferred.reject(err);
+				}
+			});
 
 			return deferred.promise;
 		},
@@ -293,7 +301,7 @@ var FilesystemAPIProvider = (function(Q) {
 			this._fs.root.getDirectory(this._prefix + attachInfo.dir,
 			{create:true}, function(dirEntry) {
 				deferred.resolve(self.setContents(attachInfo.path, data));
-			}, makeErrorHandler(deferred, "getting attachment dir"));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
@@ -307,8 +315,8 @@ var FilesystemAPIProvider = (function(Q) {
 				function(entry) {
 					entry.remove(function() {
 						deferred.resolve();
-					}, makeErrorHandler(deferred, "removing attachment"));
-			}, makeErrorHandler(deferred, "getting attachment file entry for rm"));
+					}, makeErrorHandler(deferred));
+			}, makeErrorHandler(deferred));
 
 			return deferred.promise;
 		},
