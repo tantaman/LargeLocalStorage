@@ -1,130 +1,6 @@
 LargeLocalStorage.URLCache = (function() {
 
-	// TODO: we need to know if we have outstanding requests
-	// for a given URL and not get a new URL if that is so.
-
-	// TODO: should we revoke the URL when removing it from the
-	// cache?
-
-	// TODO: provide an option for the cache to manage URL revocation.
-
 	// TODO: provide a "revokeAllCachedURLS" method
-
-	// TODO: change this to an adapter style interface
-	// so we don't befuddle the original object.
-
-	function add(cache, docKey, attachKey, url) {
-		if (cache.options.manageRevocation)
-			this.expunge(cache, docKey, attachKey);
-
-		var mainCache = cache.main;
-		var docCache = mainCache[docKey];
-		if (!docCache) {
-			docCache = {};
-			mainCache[docKey] = docCache;
-		}
-
-		docCache[attachKey] = url;
-		cache.reverse[url] = {docKey: docKey, attachKey: attachKey};
-	}
-
-	function addAll(cache, urlEntries) {
-		urlEntries.forEach(function(entry) {
-			this.add(cache, entry.docKey, entry.attachKey, entry.url);
-		}, this);
-	}
-
-	function expunge(cache, docKey, attachKey) {
-		function delAndRevoke(attachKey) {
-			var url = docCache[attachKey];
-			delete docCache[attachKey];
-			delete cache.reverse[url];
-			if (cache.options.manageRevocation)
-				this.revokeAttachmentURL.call(this._lls, url);
-		}
-
-		var docCache = cache.main[docKey];
-		if (docCache) {
-			if (attachKey) {
-				delAndRevoke.call(this, attachKey);
-			} else {
-				for (var attachKey in docCache) {
-					delAndRevoke.call(this, attachKey);
-				}
-				delete cache.main[docKey];
-			}
-		}
-	}
-
-	function expungeByUrl(cache, url) {
-		var keys = cache.reverse[url];
-		if (keys) {
-			this.expunge(cache, keys.docKey, keys.attachKey);
-		}
-	}
-
-
-	function setAttachment(docKey, attachKey, blob) {
-		this.expunge(this._cache, docKey, attachKey);
-		return this.setAttachment.call(this._lls, docKey, attachKey, blob);
-	}
-
-	function rmAttachment(docKey, attachKey) {
-		this.expunge(this._cache, docKey, attachKey);
-		return this.rmAttachment.call(this._lls, docKey, attachKey);
-	}
-
-	function rm(docKey) {
-		this.expunge(this._cache, docKey);
-		return this.rm.call(this._lls, docKey);
-	}
-
-	function revokeAttachmentURL(url) {
-		this.expungeByUrl(this._cache, url);
-		return this.revokeAttachmentURL.call(this._lls, url);
-	}
-
-	function getAttachmentURL(docKey, attachKey) {
-		var pendingKey = docKey + attachKey;
-		var pending = this._pending[pendingKey];
-		if (pending)
-			return pending;
-
-		var promise = this.getAttachmentURL.call(this._lls, docKey, attachKey);
-		var self = this;
-		promise.then(function(url) {
-			self.add(self._cache, docKey, attachKey, url);
-			delete self._pending[pendingKey];
-		});
-
-		this._pending[pendingKey] = promise;
-
-		return promise;
-	}
-
-	// TODO: pending between this and getAttachmentURL...
-	// Execute this as an ls and then
-	// a loop on getAttachmentURL instead???
-	// doing it the way mentiond above
-	// will prevent us from leaking blobs.
-	function getAllAttachmentURLs(docKey) {
-		var promise = this.getAllAttachmentURLs.call(this._lls, docKey);
-		var self = this;
-		promise.then(function(urlEntries) {
-			addAll(self._cache, urlEntries);
-		});
-
-		return promise;
-	}
-
-	function clear() {
-		for (var url in this._cache.reverse) {
-			this.revokeAttachmentURL.call(this._lls, url);
-		}
-
-		this._cache.reverse = {};
-		this._cache.main = {};
-	}
 
 	var defaultOptions = {
 		manageRevocation: true
@@ -139,49 +15,147 @@ LargeLocalStorage.URLCache = (function() {
 		return options;
 	}
 
-	return {
-		applyTo: function(lls, options) {
-			this._applyTo(lls, options);
+	function add(docKey, attachKey, url) {
+		if (this.options.manageRevocation)
+			expunge.call(this, docKey, attachKey, true);
+
+		var mainCache = this.cache.main;
+		var docCache = mainCache[docKey];
+		if (!docCache) {
+			docCache = {};
+			mainCache[docKey] = docCache;
+		}
+
+		docCache[attachKey] = url;
+		this.cache.reverse[url] = {docKey: docKey, attachKey: attachKey};
+	}
+
+	function addAll(urlEntries) {
+		urlEntries.forEach(function(entry) {
+			add.call(this, entry.docKey, entry.attachKey, entry.url);
+		}, this);
+	}
+
+	function expunge(docKey, attachKey, needsRevoke) {
+		function delAndRevoke(attachKey) {
+			var url = docCache[attachKey];
+			delete docCache[attachKey];
+			delete this.cache.reverse[url];
+			if (this.options.manageRevocation && needsRevoke)
+				this.llspipe.revokeAttachmentURL.call(this._lls, url, {bypassUrlCache: true});
+		}
+
+		var docCache = this.cache.main[docKey];
+		if (docCache) {
+			if (attachKey) {
+				delAndRevoke.call(this, attachKey);
+			} else {
+				for (var attachKey in docCache) {
+					delAndRevoke.call(this, attachKey);
+				}
+				delete this.cache.main[docKey];
+			}
+		}
+	}
+
+	// ExpungeByUrl is called from revokeUrl
+	// so obviously the url doesn't need to be revoked again.
+	function expungeByUrl(url) {
+		var keys = this.cache.reverse[url];
+		if (keys) {
+			expunge.call(this, keys.docKey, keys.attachKey, false);
+		}
+	}
+
+
+	function URLCache(llspipe, options) {
+		options = options || {};
+		this.options = defaults(options, defaultOptions);
+		this.llspipe = llspipe;
+		this.pending = {};
+		this.cache = {
+			main: {},
+			reverse: {}
+		};
+	}
+
+	URLCache.prototype = {
+		setAttachment: function(docKey, attachKey, blob) {
+			expunge.call(this, docKey, attachKey);
+			return this.__pipectx.next(docKey, attachKey, blob);
 		},
 
-		// This method is only used by unit tests to verify
-		// the cache.
-		_applyTo: function(lls, options) {
-			var obj = {};
+		rmAttachment: function(docKey, attachKey) {
+			expunge.call(this, docKey, attachKey);
+			return this.__pipectx.next(docKey, attachKey);
+		},
 
-			obj._cache = {
-				main: {},
-				reverse: {}
-			};
-			obj._pending = {};
-			obj._lls = lls;
+		rm: function(docKey) {
+			expunge.call(this, docKey);
+			return this.__pipectx.next(docKey);
+		},
 
-			obj._cache.options = defaults(options || {}, defaultOptions);
+		revokeAttachmentURL: function(url, options) {
+			if (!options || !options.bypassUrlCache)
+				expungeByUrl.call(this, url);
 
-			obj.expunge = expunge;
-			obj.expungeByUrl = expungeByUrl;
-			obj.add = add;
-			obj.addAll = addAll;
+			return this.__pipectx.next(url, options);
+		},
 
-			obj.setAttachment = lls.setAttachment;
-			lls.setAttachment = setAttachment.bind(obj);
+		getAttachmentURL: function(docKey, attachKey) {
+			var pendingKey = docKey + attachKey;
+			var pending = this.pending[pendingKey];
+			if (pending)
+				return pending;
 
-			obj.rmAttachment = lls.rmAttachment;
-			lls.rmAttachment = rmAttachment.bind(obj);
+			var promise = this.__pipectx.next(docKey, attachKey);
+			var self = this;
+			promise.then(function(url) {
+				add.call(self, docKey, attachKey, url);
+				delete self.pending[pendingKey];
+			});
 
-			obj.rm = lls.rm;
-			lls.rm = rm.bind(obj);
+			this.pending[pendingKey] = promise;
 
-			obj.revokeAttachmentURL = lls.revokeAttachmentURL;
-			lls.revokeAttachmentURL = revokeAttachmentURL.bind(obj);
+			return promise;
+		},
 
-			obj.getAttachmentURL = lls.getAttachmentURL;
-			lls.getAttachmentURL = getAttachmentURL.bind(obj);
+		// TODO: pending between this and getAttachmentURL...
+		// Execute this as an ls and then
+		// a loop on getAttachmentURL instead???
+		// doing it the way mentiond above
+		// will prevent us from leaking blobs.
+		getAllAttachmentURLs: function(docKey) {
+			var promise = this.__pipectx.next(docKey);
+			var self = this;
+			promise.then(function(urlEntries) {
+				addAll.call(self, urlEntries);
+			});
 
-			obj.getAllAttachmentURLs = lls.getAllAttachmentURLs;
-			lls.getAllAttachmentURLs = getAllAttachmentURLs.bind(obj);
+			return promise;
+		},
 
-			return obj;
+		clear: function() {
+			for (var url in this.cache.reverse) {
+				this.llspipe.revokeAttachmentURL(url, {bypassUrlCache: true});
+			}
+
+			this.cache.reverse = {};
+			this.cache.main = {};
+		}
+	};
+
+	return {
+		addTo: function(lls, options) {
+			lls.addFirst('cache', new URLCache(options));
+			return lls;
+		},
+
+		// Used internally for unit test verification
+		_addTo: function(lls, options) {
+			var cache = new URLCache(lls, options);
+			lls.addFirst('cache', cache);
+			return cache;
 		}
 	}
 })();

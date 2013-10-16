@@ -7,7 +7,7 @@
 	var blob = new Blob(['<p>worthless</p>'], {type: 'text/html'});
 
 	var storage = new lls({size: 10 * 1024 * 1024});
-	var cacheObj = LargeLocalStorage.URLCache._applyTo(storage)._cache;
+	var cacheObj = LargeLocalStorage.URLCache._addTo(storage).cache;
 
 	function loadTests() {
 	describe('URLCache', function() {
