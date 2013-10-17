@@ -2,7 +2,8 @@
 	'use strict';
 
 	var storage = new LargeLocalStorage({
-		size: 20 * 1024 * 1024
+		size: 20 * 1024 * 1024,
+		name: 'lls-album-example'
 		// forceProvider: 'IndexedDB'
 		// forceProvider: 'WebSQL'
 	});
@@ -33,6 +34,13 @@
 		this.$el.on('drop', this._drop);
 		this.$thumbs = this.$el.find('.thumbnails');
 		this.$usage = this.$el.find('.usage');
+
+		var self = this;
+		$('#clear').click(function() {
+			storage.clear().then(function() {
+				self.$thumbs.empty();
+			}).done();
+		});
 
 		this._renderExistingPhotos();
 	}

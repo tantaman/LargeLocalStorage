@@ -1,7 +1,8 @@
 (function(lls) {
 	var storage = new lls({
 		size: 10 * 1024 * 1024,
-		forceProvider: 'WebSQL' // force a desired provider.
+		name: 'lls-test'
+		// forceProvider: 'WebSQL' // force a desired provider.
 	});
 
 	// for debug
