@@ -6,7 +6,7 @@
 	});
 
 	// for debug
-	window.storage = storage;
+	// window.storage = storage;
 
 	function fail(err) {
 		console.error('I AM A FAILED TEST!');
