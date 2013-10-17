@@ -23,6 +23,19 @@ module.exports = function (grunt) {
 			}
 		},
 
+		uglify: {
+			options: {
+				mangle: {
+					except: ['Q']
+				}
+			},
+			scripts: {
+				files: {
+					'dist/LargeLocalStorage.min.js': ['dist/LargeLocalStorage.js']
+				}
+			}
+		},
+
 		watch: {
 			scripts: {
 				files: ["src/**/*.js"],
@@ -76,4 +89,5 @@ module.exports = function (grunt) {
 
 	grunt.registerTask('default', ['concat', 'copy', 'connect', 'watch']);
 	grunt.registerTask('docs', ['yuidoc']);
+	grunt.registerTask('build', ['concat', 'copy', 'uglify']);
 };
