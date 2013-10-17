@@ -168,7 +168,7 @@ var LargeLocalStorage = (function(Q) {
 		*/
 		this.initialized = deferred.promise;
 
-		var piped = pipeline([
+		var piped = createPipeline([
 			'ready',
 			'ls',
 			'rm',
@@ -293,9 +293,9 @@ var LargeLocalStorage = (function(Q) {
 		* @param {string} docKey
 		* @returns {promise} resolved with the contents when the get completes
 		*/
-		getContents: function(docKey) {
+		getContents: function(docKey, options) {
 			this._checkAvailability();
-			return this._impl.getContents(docKey);
+			return this._impl.getContents(docKey, options);
 		},
 
 		/**
@@ -312,9 +312,9 @@ var LargeLocalStorage = (function(Q) {
 		* @param {any} data
 		* @returns {promise} fulfilled when set completes
 		*/
-		setContents: function(docKey, data) {
+		setContents: function(docKey, data, options) {
 			this._checkAvailability();
-			return this._impl.setContents(docKey, data);
+			return this._impl.setContents(docKey, data, options);
 		},
 
 		/**
@@ -522,6 +522,8 @@ var LargeLocalStorage = (function(Q) {
 			}
 		}
 	};
+
+	LargeLocalStorage.contrib = {};
 
 	return LargeLocalStorage;
 })(Q);

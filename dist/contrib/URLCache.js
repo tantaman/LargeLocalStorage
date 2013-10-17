@@ -1,7 +1,4 @@
-LargeLocalStorage.URLCache = (function() {
-
-	// TODO: provide a "revokeAllCachedURLS" method
-
+LargeLocalStorage.contrib.URLCache = (function() {
 	var defaultOptions = {
 		manageRevocation: true
 	};
@@ -58,8 +55,6 @@ LargeLocalStorage.URLCache = (function() {
 		}
 	}
 
-	// ExpungeByUrl is called from revokeUrl
-	// so obviously the url doesn't need to be revoked again.
 	function expungeByUrl(url) {
 		var keys = this.cache.reverse[url];
 		if (keys) {
@@ -71,7 +66,7 @@ LargeLocalStorage.URLCache = (function() {
 	function URLCache(llspipe, options) {
 		options = options || {};
 		this.options = defaults(options, defaultOptions);
-		this.llshandler = llspipe.pipe.getHandler('lls').handler;
+		this.llshandler = llspipe.pipe.getHandler('lls');
 		this.pending = {};
 		this.cache = {
 			main: {},
@@ -136,6 +131,11 @@ LargeLocalStorage.URLCache = (function() {
 		},
 
 		clear: function() {
+			this.revokeAllCachedURLs();
+			return this.__pipectx.next();
+		},
+
+		revokeAllCachedURLs: function() {
 			for (var url in this.cache.reverse) {
 				this.llshandler.revokeAttachmentURL(url, {bypassUrlCache: true});
 			}
@@ -148,11 +148,8 @@ LargeLocalStorage.URLCache = (function() {
 	return {
 		addTo: function(lls, options) {
 			var cache = new URLCache(lls, options);
-			lls.pipe.addFirst('cache', cache);
-			return {
-				lls: lls,
-				urlCache: cache
-			};
+			lls.pipe.addFirst('URLCache', cache);
+			return lls;
 		}
 	}
 })();

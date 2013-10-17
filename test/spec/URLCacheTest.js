@@ -7,7 +7,8 @@
 	var blob = new Blob(['<p>worthless</p>'], {type: 'text/html'});
 
 	var storage = new lls({size: 10 * 1024 * 1024});
-	var cacheObj = LargeLocalStorage.URLCache.addTo(storage).urlCache.cache;
+	LargeLocalStorage.contrib.URLCache.addTo(storage);
+	var cacheObj = storage.pipe.getHandler('URLCache').cache;
 
 	// for debug
 	window.cacheObj = cacheObj;
@@ -15,6 +16,7 @@
 
 	// TODO: spy on LargeLocalStorage to ensure that 
 	// revokeAttachmentURL is being called.
+	// And also spy to make sure piped methods are receiving their calls.
 
 	function loadTests() {
 	describe('URLCache', function() {

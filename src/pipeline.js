@@ -2,7 +2,6 @@
 /**
 @author Matt Crinklaw-Vogt
 */
-(function(root) {
 function PipeContext(handlers, nextMehod, end) {
 	this._handlers = handlers;
 	this._next = nextMehod;
@@ -131,7 +130,7 @@ var abstractPipeline = {
 	getHandler: function(name) {
 		var i = indexOfHandler(this._handlers, this._handlers.length, name);
 		if (i >= 0)
-			return this._handlers[i];
+			return this._handlers[i].handler;
 		return null;
 	}
 };
@@ -175,13 +174,3 @@ function createPipeline(pipedMethodNames) {
 createPipeline.isPipeline = function(obj) {
 	return obj instanceof Pipeline;
 }
-
-if (typeof define === 'function' && define.amd) {
-	define(createPipeline);
-} else if (typeof exports === "object") {
-	module.exports = createPipeline;
-} else {
-	root.pipeline = createPipeline;
-}
-
-})(this);
