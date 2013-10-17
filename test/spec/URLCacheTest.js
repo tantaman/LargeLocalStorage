@@ -11,8 +11,8 @@
 	var cacheObj = storage.pipe.getHandler('URLCache').cache;
 
 	// for debug
-	window.cacheObj = cacheObj;
-	window.storage = storage;
+	// window.cacheObj = cacheObj;
+	// window.storage = storage;
 
 	// TODO: spy on LargeLocalStorage to ensure that 
 	// revokeAttachmentURL is being called.
