@@ -55,10 +55,10 @@
 				b: 2,
 				c: {a: true}
 			};
-			storage.setContents("testfile2", JSON.stringify(jsondoc)).then(function() {
-				return storage.getContents("testfile2");
+			storage.setContents("testfile2", jsondoc, {json:true}).then(function() {
+				return storage.getContents("testfile2", {json:true});
 			}).then(function(contents) {
-				expect(jsondoc).to.eql(JSON.parse(contents));
+				expect(jsondoc).to.eql(contents);
 			}).done(done);
 		});
 
