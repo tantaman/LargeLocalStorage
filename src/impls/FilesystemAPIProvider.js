@@ -60,7 +60,7 @@ var FilesystemAPIProvider = (function(Q) {
 	}
 
 	FSAPI.prototype = {
-		getContents: function(path) {
+		getContents: function(path, options) {
 			var deferred = Q.defer();
 			path = this._prefix + path;
 			this._fs.root.getFile(path, {}, function(fileEntry) {
@@ -69,7 +69,20 @@ var FilesystemAPIProvider = (function(Q) {
 
 					reader.onloadend = function(e) {
 						var data = e.target.result;
-						deferred.resolve(data);
+						var err;
+						if (options && options.json) {
+							try {
+								data = JSON.parse(data);
+							} catch(e) {
+								err = new Error('unable to parse JSON for ' + path);
+							}
+						}
+
+						if (err) {
+							deferred.reject(err);
+						} else {
+							deferred.resolve(data);
+						}
 					};
 
 					reader.readAsText(file);
@@ -81,8 +94,11 @@ var FilesystemAPIProvider = (function(Q) {
 
 		// create a file at path
 		// and write `data` to it
-		setContents: function(path, data) {
+		setContents: function(path, data, options) {
 			var deferred = Q.defer();
+
+			if (options && options.json)
+				data = JSON.stringify(data);
 
 			path = this._prefix + path;
 			this._fs.root.getFile(path, {create:true}, function(fileEntry) {

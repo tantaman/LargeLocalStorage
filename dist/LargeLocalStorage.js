@@ -1,11 +1,12 @@
 (function(glob) {
 	var undefined = {}.a;
+
+	function definition(Q) {
 	
 
 /**
 @author Matt Crinklaw-Vogt
 */
-(function(root) {
 function PipeContext(handlers, nextMehod, end) {
 	this._handlers = handlers;
 	this._next = nextMehod;
@@ -178,16 +179,6 @@ function createPipeline(pipedMethodNames) {
 createPipeline.isPipeline = function(obj) {
 	return obj instanceof Pipeline;
 }
-
-if (typeof define === 'function' && define.amd) {
-	define(createPipeline);
-} else if (typeof exports === "object") {
-	module.exports = createPipeline;
-} else {
-	root.pipeline = createPipeline;
-}
-
-})(this);
 var utils = (function() {
 	return {
 		convertToBase64: function(blob, cb) {
@@ -330,7 +321,7 @@ var FilesystemAPIProvider = (function(Q) {
 	}
 
 	FSAPI.prototype = {
-		getContents: function(path) {
+		getContents: function(path, options) {
 			var deferred = Q.defer();
 			path = this._prefix + path;
 			this._fs.root.getFile(path, {}, function(fileEntry) {
@@ -339,7 +330,20 @@ var FilesystemAPIProvider = (function(Q) {
 
 					reader.onloadend = function(e) {
 						var data = e.target.result;
-						deferred.resolve(data);
+						var err;
+						if (options && options.json) {
+							try {
+								data = JSON.parse(data);
+							} catch(e) {
+								err = new Error('unable to parse JSON for ' + path);
+							}
+						}
+
+						if (err) {
+							deferred.reject(err);
+						} else {
+							deferred.resolve(data);
+						}
 					};
 
 					reader.readAsText(file);
@@ -351,8 +355,11 @@ var FilesystemAPIProvider = (function(Q) {
 
 		// create a file at path
 		// and write `data` to it
-		setContents: function(path, data) {
+		setContents: function(path, data, options) {
 			var deferred = Q.defer();
+
+			if (options && options.json)
+				data = JSON.stringify(data);
 
 			path = this._prefix + path;
 			this._fs.root.getFile(path, {create:true}, function(fileEntry) {
@@ -1011,7 +1018,7 @@ var WebSQLProvider = (function(Q) {
 	}
 
 	WSQL.prototype = {
-		getContents: function(docKey) {
+		getContents: function(docKey, options) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
 				tx.executeSql('SELECT value FROM files WHERE fname = ?', [docKey],
@@ -1019,7 +1026,10 @@ var WebSQLProvider = (function(Q) {
 					if (res.rows.length == 0) {
 						deferred.resolve(undefined);
 					} else {
-						deferred.resolve(res.rows.item(0).value);
+						var data = res.rows.item(0).value;
+						if (options && options.json)
+							data = JSON.parse(data);
+						deferred.resolve(data);
 					}
 				});
 			}, function(err) {
@@ -1030,8 +1040,11 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		setContents: function(docKey, data) {
+		setContents: function(docKey, data, options) {
 			var deferred = Q.defer();
+			if (options && options.json)
+				data = JSON.stringify(data);
+
 			this._db.transaction(function(tx) {
 				tx.executeSql(
 				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [docKey, data]);
@@ -1421,7 +1434,7 @@ var LargeLocalStorage = (function(Q) {
 		*/
 		this.initialized = deferred.promise;
 
-		var piped = pipeline([
+		var piped = createPipeline([
 			'ready',
 			'ls',
 			'rm',
@@ -1546,9 +1559,9 @@ var LargeLocalStorage = (function(Q) {
 		* @param {string} docKey
 		* @returns {promise} resolved with the contents when the get completes
 		*/
-		getContents: function(docKey) {
+		getContents: function(docKey, options) {
 			this._checkAvailability();
-			return this._impl.getContents(docKey);
+			return this._impl.getContents(docKey, options);
 		},
 
 		/**
@@ -1565,9 +1578,9 @@ var LargeLocalStorage = (function(Q) {
 		* @param {any} data
 		* @returns {promise} fulfilled when set completes
 		*/
-		setContents: function(docKey, data) {
+		setContents: function(docKey, data, options) {
 			this._checkAvailability();
-			return this._impl.setContents(docKey, data);
+			return this._impl.setContents(docKey, data, options);
 		},
 
 		/**
@@ -1780,5 +1793,14 @@ var LargeLocalStorage = (function(Q) {
 
 	return LargeLocalStorage;
 })(Q);
-glob.LargeLocalStorage = LargeLocalStorage;
+
+	return LargeLocalStorage;
+}
+
+if (typeof define === 'function' && define.amd) {
+	define(['Q'], definition);
+} else {
+	glob.LargeLocalStorage = definition.call(glob, Q);
+}
+
 }).call(this, this);

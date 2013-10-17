@@ -9,7 +9,7 @@ var WebSQLProvider = (function(Q) {
 	}
 
 	WSQL.prototype = {
-		getContents: function(docKey) {
+		getContents: function(docKey, options) {
 			var deferred = Q.defer();
 			this._db.transaction(function(tx) {
 				tx.executeSql('SELECT value FROM files WHERE fname = ?', [docKey],
@@ -17,7 +17,10 @@ var WebSQLProvider = (function(Q) {
 					if (res.rows.length == 0) {
 						deferred.resolve(undefined);
 					} else {
-						deferred.resolve(res.rows.item(0).value);
+						var data = res.rows.item(0).value;
+						if (options && options.json)
+							data = JSON.parse(data);
+						deferred.resolve(data);
 					}
 				});
 			}, function(err) {
@@ -28,8 +31,11 @@ var WebSQLProvider = (function(Q) {
 			return deferred.promise;
 		},
 
-		setContents: function(docKey, data) {
+		setContents: function(docKey, data, options) {
 			var deferred = Q.defer();
+			if (options && options.json)
+				data = JSON.stringify(data);
+
 			this._db.transaction(function(tx) {
 				tx.executeSql(
 				'INSERT OR REPLACE INTO files (fname, value) VALUES(?, ?)', [docKey, data]);
