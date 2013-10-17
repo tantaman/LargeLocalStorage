@@ -1,8 +1,8 @@
 {
     "project": {
-        "name": "LargeLocalStorage",
+        "name": "lls",
         "description": "Storage large files and blob in a cross platform way, in the browser",
-        "version": "0.1.0",
+        "version": "0.1.2",
         "url": ""
     },
     "files": {
@@ -387,19 +387,19 @@
         },
         {
             "file": "src/pipeline.js",
-            "line": 68,
+            "line": 67,
             "description": "Add the handler with the given name after the \nhandler specified by target.  Target can be a handler\nname or a handler instance.",
             "class": ""
         },
         {
             "file": "src/pipeline.js",
-            "line": 84,
+            "line": 83,
             "description": "Add the handler with the given name after the handler\nspecified by target.  Target can be a handler name or\na handler instance.",
             "class": ""
         },
         {
             "file": "src/pipeline.js",
-            "line": 100,
+            "line": 99,
             "description": "Replace the handler specified by target.",
             "class": ""
         }
@@ -467,15 +467,15 @@
         },
         {
             "message": "Missing item type\nAdd the handler with the given name after the \nhandler specified by target.  Target can be a handler\nname or a handler instance.",
-            "line": " src/pipeline.js:68"
+            "line": " src/pipeline.js:67"
         },
         {
             "message": "Missing item type\nAdd the handler with the given name after the handler\nspecified by target.  Target can be a handler name or\na handler instance.",
-            "line": " src/pipeline.js:84"
+            "line": " src/pipeline.js:83"
         },
         {
             "message": "Missing item type\nReplace the handler specified by target.",
-            "line": " src/pipeline.js:100"
+            "line": " src/pipeline.js:99"
         }
     ]
 }
