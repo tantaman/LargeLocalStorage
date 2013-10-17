@@ -68,6 +68,7 @@ storage.getContents('myDoc').then(function(content) {
 // Call getAttachment with the docKey and attachmentKey
 storage.getAttachment('myDoc', 'titleImage').then(function(titleImage) {
     // Create an image element with the retrieved attachment
+    // (or video or sound or whatever you decide to attach and use)
     var img = new Image();
     img.src = URL.createObjectURL(titleImage);
     document.body.appendChild(img);
