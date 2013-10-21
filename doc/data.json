@@ -2,7 +2,7 @@
     "project": {
         "name": "lls",
         "description": "Storage large files and blob in a cross platform way, in the browser",
-        "version": "0.1.2",
+        "version": "0.1.3",
         "url": ""
     },
     "files": {
