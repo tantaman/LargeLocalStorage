@@ -68,6 +68,7 @@ storage.getContents('myDoc').then(function(content) {
 // Call getAttachment with the docKey and attachmentKey
 storage.getAttachment('myDoc', 'titleImage').then(function(titleImage) {
     // Create an image element with the retrieved attachment
+    // (or video or sound or whatever you decide to attach and use)
     var img = new Image();
     img.src = URL.createObjectURL(titleImage);
     document.body.appendChild(img);
@@ -147,6 +148,9 @@ define(['components/lls/dist/LargeLocalStorage'], function(lls) {
 LLS depends on [Q](https://github.com/kriskowal/q) so you'll have to make sure you have that dependency.
 
 ##Getting
-downlad it directly: https://raw.github.com/tantaman/LargeLocalStorage/master/dist/LargeLocalStorage.js
+downlad it directly
+
+* (dev) https://raw.github.com/tantaman/LargeLocalStorage/master/dist/LargeLocalStorage.js
+* (min) https://raw.github.com/tantaman/LargeLocalStorage/master/dist/LargeLocalStorage.min.js
 
 Or `bower install lls`
