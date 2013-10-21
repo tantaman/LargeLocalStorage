@@ -148,6 +148,9 @@ define(['components/lls/dist/LargeLocalStorage'], function(lls) {
 LLS depends on [Q](https://github.com/kriskowal/q) so you'll have to make sure you have that dependency.
 
 ##Getting
-downlad it directly: https://raw.github.com/tantaman/LargeLocalStorage/master/dist/LargeLocalStorage.js
+downlad it directly
+
+* (dev) https://raw.github.com/tantaman/LargeLocalStorage/master/dist/LargeLocalStorage.js
+* (min) https://raw.github.com/tantaman/LargeLocalStorage/master/dist/LargeLocalStorage.min.js
 
 Or `bower install lls`
