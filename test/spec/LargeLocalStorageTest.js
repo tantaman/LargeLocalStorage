@@ -8,12 +8,6 @@
 	// for debug
 	// window.storage = storage;
 
-	function fail(err) {
-		console.error('I AM A FAILED TEST!');
-		// console.log(err);
-		// expect(true).to.equal(false);
-	}
-
 	function getAttachment(a, cb) {
         var xhr = new XMLHttpRequest(),
             blob;
@@ -48,7 +42,6 @@
 			}).done(done);
 		});
 
-		// well.... maybe not anymore... need to think about this ability.
 		it('Allows js objects to be set and read', function(done) {
 			var jsondoc = {
 				a: 1,
@@ -87,11 +80,13 @@
 
 
 		// Apparently these tests are being run sequentially...
-		// so taking advantage of that...
+		// so taking advantage of that.
 		it('Allows us to get attachments as urls', function(done) {
 			storage.getAttachmentURL("testfile4", "ele").then(function(url) {
 				// urls are pretty opaque since they could be from
 				// filesystem api, indexeddb, or websql
+				// meaning there isn't much we can do to verify them
+				// besides ensure that they are strings.
 				expect(typeof url === 'string').to.equal(true);
 				$(document.body).append('<img src="' + url + '">');
 			}).done(done);
@@ -99,7 +94,8 @@
 
 		it('Allows attachments to be deleted', function(done) {
 			storage.rmAttachment("testfile4", "ele").then(function() {
-				// ????
+				// .done will throw any errors and fail the test for us if 
+				// something went wrong.
 			}).done(done);
 		});
 
@@ -185,16 +181,15 @@
 
 		it('Allows us to clear out the entire storage', function(done) {
 			storage.clear().then(function() {
-				var scb = function(value) {
+				var scb = countdown(2, function(value) {
 					if (value != undefined)
-						fail('should have been deleted');
-					done();
-				};
-
-				var ecb = countdown(2, function(err) {
-					expect(err.code).to.equal(1);
+						throw new Error('Files were not removed.');
 					done();
 				});
+
+				var ecb = function(err) {
+					throw new Error('getting missing documents should not return an error');
+				};
 
 				storage.getContents('testfile4').then(scb, ecb);
 				storage.getContents('testfile2').then(scb, ecb);
