@@ -75,8 +75,8 @@ var LargeLocalStorage = (function(Q) {
 	 * key-value store in the browser.
 	 *
 	 * For storage, LLS uses the [FilesystemAPI](https://developer.mozilla.org/en-US/docs/WebGuide/API/File_System)
-	 * when running in Crome and Opera, 
-	 * [InexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB) in Firefox and IE
+	 * when running in Chrome and Opera, 
+	 * [IndexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB) in Firefox and IE
 	 * and [WebSQL](http://www.w3.org/TR/webdatabase/) in Safari.
 	 *
 	 * When IndexedDB becomes available in Safari, LLS will
