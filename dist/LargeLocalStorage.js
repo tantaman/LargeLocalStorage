@@ -317,7 +317,7 @@ var FilesystemAPIProvider = (function(Q) {
 		this._fs = fs;
 		this._capacity = numBytes;
 		this._prefix = prefix;
-		this.type = "FilesystemAPI";
+		this.type = "FileSystemAPI";
 	}
 
 	FSAPI.prototype = {
@@ -1280,19 +1280,6 @@ var LargeLocalStorage = (function(Q) {
 		return options;
 	}
 
-	function getImpl(type) {
-		switch(type) {
-			case 'FileSystemAPI':
-				return FilesystemAPIProvider.init();
-			case 'IndexedDB':
-				return IndexedDBProvider.init();
-			case 'WebSQL':
-				return WebSQLProvider.init();
-			case 'LocalStorage':
-				return LocalStorageProvider.init();
-		}
-	}
-
 	var providers = {
 		FileSystemAPI: FilesystemAPIProvider,
 		IndexedDB: IndexedDBProvider,
@@ -1329,9 +1316,25 @@ var LargeLocalStorage = (function(Q) {
 		});
 	}
 
-	function copyOldData(from, to) {
-		// from = getImpl(from);
-		console.log('Underlying implementation change.');
+	function copy(obj) {
+		var result = {};
+		Object.keys(obj).forEach(function(key) {
+			result[key] = obj[key];
+		});
+
+		return result;
+	}
+
+	function handleDataMigration(storageInstance, config, previousProviderType) {
+		if (config.copyOldData) {
+			config = copy(config);
+			config.forceProvider = previousProviderType;
+			selectImplementation(config).then(function(prevImpl) {
+				config.copyOldData(null, prevImpl, storageInstance);
+			}, function(e) {
+				config.copyOldData(e);
+			});
+		}
 	}
 
 	/**
@@ -1416,10 +1419,10 @@ var LargeLocalStorage = (function(Q) {
 		var self = this;
 		var deferred = Q.defer();
 		selectImplementation(config).then(function(impl) {
-			console.log('Selected: ' + impl.type);
 			self._impl = impl;
-			if (sessionMeta.lastStorageImpl != self._impl.type) {
-				copyOldData(sessionMeta.lastStorageImpl, self._impl);
+			if (sessionMeta.lastStorageImpl != self._impl.type 
+				&& sessionMeta.lastStorageImpl in providers) {
+				handleDataMigration(self, config, sessionMeta.lastStorageImpl);
 			}
 			sessionMeta.lastStorageImpl = impl.type;
 			deferred.resolve(self);
@@ -1790,6 +1793,39 @@ var LargeLocalStorage = (function(Q) {
 	};
 
 	LargeLocalStorage.contrib = {};
+
+	function writeAttachments(docKey, attachments, storage) {
+		attachments.forEach(function(attachment) {
+			console.log(attachment);
+			// storage.setAttachment(docKey, attachment.name)
+		});
+	}
+
+	function copyDocs(docKeys, oldStorage, newStorage) {
+		docKeys.forEach(function(key) {
+			oldStorage.getContents(key).then(function(contents) {
+				newStorage.setContents(key, contents).done();
+			}).done();
+		});
+
+		docKeys.forEach(function(key) {
+			oldStorage.getAllAttachments(keys).then(function(attachments) {
+				writeAttachments(key, attachments, newStorage);
+			}).done();
+		});
+	}
+
+	LargeLocalStorage.copyOldData = function(err, oldStorage, newStorage) {
+		if (err) {
+			throw err;
+		}
+
+		oldStorage.ls.then(function(docKeys) {
+			copyDocs(docKeys, oldStorage, newStorage)
+		}).done();
+	};
+
+	LargeLocalStorage._sessionMeta = sessionMeta;
 
 	return LargeLocalStorage;
 })(Q);

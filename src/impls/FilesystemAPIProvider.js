@@ -56,7 +56,7 @@ var FilesystemAPIProvider = (function(Q) {
 		this._fs = fs;
 		this._capacity = numBytes;
 		this._prefix = prefix;
-		this.type = "FilesystemAPI";
+		this.type = "FileSystemAPI";
 	}
 
 	FSAPI.prototype = {

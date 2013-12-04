@@ -195,7 +195,23 @@
 				storage.getContents('testfile2').then(scb, ecb);
 			}).done();
 		});
+
+		describe('Data Migration', function() {
+			it('Allows us to copy data when the implementation changes', function(done) {
+				getAvailableImplementations().then(function() {
+
+				});
+				storage = new lls({
+					name: 'lls-migration-test',
+					forceProvider: 'WebSQL'
+				});
+			});
+		});
 	});
+
+	function getAvailableImplementations() {
+		
+	}
 
 
 	storage.initialized.then(function() {
