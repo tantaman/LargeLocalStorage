@@ -198,19 +198,56 @@
 
 		describe('Data Migration', function() {
 			it('Allows us to copy data when the implementation changes', function(done) {
-				getAvailableImplementations().then(function() {
-
-				});
-				storage = new lls({
-					name: 'lls-migration-test',
-					forceProvider: 'WebSQL'
+				getAvailableImplementations().then(function(available) {
+					if (available.length >= 2)
+						testDataMigration(done, available);
+					else
+						done();
 				});
 			});
 		});
 	});
 
+	function testDataMigration(done, availableProviders) {
+		var storage = new lls({
+			name: 'lls-migration-test',
+			forceProvider: availableProviders[0]
+		});
+
+		storage.initialized.then(function() {
+			console.log('Inited');
+			return storage.setContents('test1', 'Allo Allo');
+		}).then(function() {
+			return storage.setContents('test2', 'Ello Ello');
+		}).then(function() {
+			return storage.setAttachment('test1', 'a1', '123asd');
+		}).then(function() {
+			return storage.setAttachment('test1', 'a2', 'sdfsdfsdf');
+		}).then(function() {
+			done();
+		}).done();
+	}
+
 	function getAvailableImplementations() {
-		
+		var deferred = Q.defer();
+		var available = [];
+
+		var potentialProviders = Object.keys(lls._providers);
+
+		var latch = countdown(potentialProviders.length, function() {
+			deferred.resolve(available);
+		});
+
+		potentialProviders.forEach(function(potentialProvider) {
+			lls._providers[potentialProvider].init({name: 'lls-test-avail'}).then(function() {
+				available.push(potentialProvider);
+				latch();
+			}, function() {
+				latch();
+			})
+		});
+
+		return deferred.promise;
 	}
 
 

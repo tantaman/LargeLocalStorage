@@ -17,8 +17,8 @@ var LargeLocalStorage = (function(Q) {
 	var providers = {
 		FileSystemAPI: FilesystemAPIProvider,
 		IndexedDB: IndexedDBProvider,
-		WebSQL: WebSQLProvider,
-		LocalStorage: LocalStorageProvider
+		WebSQL: WebSQLProvider
+		// LocalStorage: LocalStorageProvider
 	}
 
 	var defaultConfig = {
@@ -560,6 +560,7 @@ var LargeLocalStorage = (function(Q) {
 	};
 
 	LargeLocalStorage._sessionMeta = sessionMeta;
+	LargeLocalStorage._providers = providers;
 
 	return LargeLocalStorage;
 })(Q);
