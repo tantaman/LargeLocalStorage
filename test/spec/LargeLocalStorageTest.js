@@ -208,6 +208,7 @@
 		});
 	});
 
+// TODO: there are a huge number of problems with this test.
 	function testDataMigration(done, availableProviders) {
 		var storage = new lls({
 			name: 'lls-migration-test',
@@ -216,8 +217,10 @@
 
 		var test1doc = 'Allo Allo';
 		var test2doc = 'Ello Ello';
-		var test1a1 = '123asd';
-		var test1a2 = 'sdfsdfsdf';
+		var test1a1txt = '123asd';
+		var test1a2txt = 'sdfsdfsdf';
+		var test1a1 = new Blob([test1a1txt], {type: 'text/plain'});
+		var test1a2 = new Blob([test1a2txt], {type: 'text/plain'});
 
 		storage.initialized.then(function() {
 			console.log('Inited');
@@ -245,9 +248,20 @@
 			expect(content).to.eql(test2doc);
 			return storage.getAttachment('test1', 'a1');
 		}).then(function(attachment) {
-			console.log(attachment);
+			var r = new FileReader();
+			// the least of which is this guy
+			r.addEventListener("loadend", function() {
+				expect(r.result).to.eql(test1a1txt);
+			});
+			r.readAsText(attachment);
 			return storage.getAttachment('test1', 'a2');
 		}).then(function(attachment) {
+			var r = new FileReader();
+			// and this guy
+			r.addEventListener("loadend", function() {
+				expect(r.result).to.eql(test1a2txt);
+			});
+			r.readAsText(attachment);
 			done();
 		}).done();
 	}
