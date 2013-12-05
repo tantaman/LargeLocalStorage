@@ -214,16 +214,40 @@
 			forceProvider: availableProviders[0]
 		});
 
+		var test1doc = 'Allo Allo';
+		var test2doc = 'Ello Ello';
+		var test1a1 = '123asd';
+		var test1a2 = 'sdfsdfsdf';
+
 		storage.initialized.then(function() {
 			console.log('Inited');
-			return storage.setContents('test1', 'Allo Allo');
+			return storage.setContents('test1', test1doc);
 		}).then(function() {
-			return storage.setContents('test2', 'Ello Ello');
+			return storage.setContents('test2', test2doc);
 		}).then(function() {
-			return storage.setAttachment('test1', 'a1', '123asd');
+			return storage.setAttachment('test1', 'a1', test1a1);
 		}).then(function() {
-			return storage.setAttachment('test1', 'a2', 'sdfsdfsdf');
+			return storage.setAttachment('test1', 'a2', test1a2);
 		}).then(function() {
+			storage = new lls({
+				name: 'lls-migration-test',
+				forceProvider: availableProviders[1],
+				copyOldData: lls.copyOldData
+			});
+			console.log('Migrating to: ' + availableProviders[1]);
+			return storage.initialized;
+		}).then(function() {
+			return storage.getContents('test1');
+		}).then(function(content) {
+			expect(content).to.eql(test1doc);
+			return storage.getContents('test2');
+		}).then(function(content) {
+			expect(content).to.eql(test2doc);
+			return storage.getAttachment('test1', 'a1');
+		}).then(function(attachment) {
+			console.log(attachment);
+			return storage.getAttachment('test1', 'a2');
+		}).then(function(attachment) {
 			done();
 		}).done();
 	}
