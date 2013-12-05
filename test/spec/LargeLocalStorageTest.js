@@ -238,8 +238,12 @@
 				copyOldData: lls.copyOldData
 			});
 			console.log('Migrating to: ' + availableProviders[1]);
-			return storage.initialized;
+
+			return storage.initialized.then(function() {
+				return storage.migrated;
+			});
 		}).then(function() {
+			console.log(arguments);
 			return storage.getContents('test1');
 		}).then(function(content) {
 			expect(content).to.eql(test1doc);

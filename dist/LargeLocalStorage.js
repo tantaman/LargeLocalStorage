@@ -1327,6 +1327,7 @@ var LargeLocalStorage = (function(Q) {
 
 	function handleDataMigration(storageInstance, config, previousProviderType) {
 		if (config.copyOldData) {
+			storageInstance.migrated = Q.defer();
 			config = copy(config);
 			config.forceProvider = previousProviderType;
 			selectImplementation(config).then(function(prevImpl) {
@@ -1416,22 +1417,7 @@ var LargeLocalStorage = (function(Q) {
 	 * @return {LargeLocalStorage}
 	 */
 	function LargeLocalStorage(config) {
-		var self = this;
 		var deferred = Q.defer();
-		selectImplementation(config).then(function(impl) {
-			self._impl = impl;
-			if (sessionMeta.lastStorageImpl != self._impl.type 
-				&& sessionMeta.lastStorageImpl in providers) {
-				handleDataMigration(self, config, sessionMeta.lastStorageImpl);
-			}
-			sessionMeta.lastStorageImpl = impl.type;
-			deferred.resolve(self);
-		}).catch(function(e) {
-			// This should be impossible
-			console.log(e);
-			deferred.reject('No storage provider found');
-		});
-
 		/**
 		* @property {promise} initialized
 		*/
@@ -1456,6 +1442,22 @@ var LargeLocalStorage = (function(Q) {
 
 		piped.pipe.addLast('lls', this);
 		piped.initialized = this.initialized;
+
+		var self = this;
+		selectImplementation(config).then(function(impl) {
+			self._impl = impl;
+			if (sessionMeta.lastStorageImpl != self._impl.type 
+				&& sessionMeta.lastStorageImpl in providers) {
+				handleDataMigration(piped, config, sessionMeta.lastStorageImpl);
+			}
+			sessionMeta.lastStorageImpl = impl.type;
+			deferred.resolve(piped);
+		}).catch(function(e) {
+			// This should be impossible
+			console.log(e);
+			deferred.reject('No storage provider found');
+		});
+
 		return piped;
 	}
 
@@ -1795,34 +1797,42 @@ var LargeLocalStorage = (function(Q) {
 	LargeLocalStorage.contrib = {};
 
 	function writeAttachments(docKey, attachments, storage) {
+		var promises = [];
 		attachments.forEach(function(attachment) {
-			storage.setAttachment(docKey, attachment.attachKey, attachment.data);
+			promises.push(storage.setAttachment(docKey, attachment.attachKey, attachment.data));
 		});
+
+		return promises;
 	}
 
 	function copyDocs(docKeys, oldStorage, newStorage) {
+		var promises = [];
 		docKeys.forEach(function(key) {
 			oldStorage.getContents(key).then(function(contents) {
-				newStorage.setContents(key, contents).done();
+				promises.push(newStorage.setContents(key, contents));
 			}).done();
 		});
 
 		docKeys.forEach(function(key) {
 			oldStorage.getAllAttachments(key).then(function(attachments) {
-				writeAttachments(key, attachments, newStorage);
+				promises = promises.concat(
+					writeAttachments(key, attachments, newStorage));
 			}).done();
 		});
+
+		return promises;
 	}
 
 	LargeLocalStorage.copyOldData = function(err, oldStorage, newStorage) {
-		console.log('Copy old data');
 		if (err) {
 			throw err;
 		}
 
 		oldStorage.ls().then(function(docKeys) {
-			copyDocs(docKeys, oldStorage, newStorage)
-		}).done();
+			return copyDocs(docKeys, oldStorage, newStorage)
+		}).then(function(promises) {
+			Q.all(promises).then(storage.migrated.resolve, storage.migrated.reject);
+		});
 	};
 
 	LargeLocalStorage._sessionMeta = sessionMeta;
