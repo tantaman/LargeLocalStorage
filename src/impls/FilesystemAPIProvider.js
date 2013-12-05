@@ -270,7 +270,7 @@ var FilesystemAPIProvider = (function(Q) {
 						}, eb);
 					}, readDirEntries(reader, [])));
 			}, function(err) {
-				deferred.reject(err);
+				deferred.resolve([]);
 			});
 
 			return deferred.promise;

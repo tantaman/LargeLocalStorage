@@ -531,7 +531,7 @@ var FilesystemAPIProvider = (function(Q) {
 						}, eb);
 					}, readDirEntries(reader, [])));
 			}, function(err) {
-				deferred.reject(err);
+				deferred.resolve([]);
 			});
 
 			return deferred.promise;
@@ -1796,8 +1796,7 @@ var LargeLocalStorage = (function(Q) {
 
 	function writeAttachments(docKey, attachments, storage) {
 		attachments.forEach(function(attachment) {
-			console.log(attachment);
-			// storage.setAttachment(docKey, attachment.name)
+			storage.setAttachment(docKey, attachment.attachKey, attachment.data);
 		});
 	}
 
@@ -1809,18 +1808,19 @@ var LargeLocalStorage = (function(Q) {
 		});
 
 		docKeys.forEach(function(key) {
-			oldStorage.getAllAttachments(keys).then(function(attachments) {
+			oldStorage.getAllAttachments(key).then(function(attachments) {
 				writeAttachments(key, attachments, newStorage);
 			}).done();
 		});
 	}
 
 	LargeLocalStorage.copyOldData = function(err, oldStorage, newStorage) {
+		console.log('Copy old data');
 		if (err) {
 			throw err;
 		}
 
-		oldStorage.ls.then(function(docKeys) {
+		oldStorage.ls().then(function(docKeys) {
 			copyDocs(docKeys, oldStorage, newStorage)
 		}).done();
 	};
