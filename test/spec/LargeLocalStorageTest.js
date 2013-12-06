@@ -209,10 +209,12 @@
 
 // TODO: there are a huge number of problems with this test.
 	function testDataMigration(done, availableProviders) {
-		var storage = new lls({
+		var fromStorage = new lls({
 			name: 'lls-migration-test',
 			forceProvider: availableProviders[0]
 		});
+
+		var toStorage;
 
 		var test1doc = 'Allo Allo';
 		var test2doc = 'Ello Ello';
@@ -221,51 +223,53 @@
 		var test1a1 = new Blob([test1a1txt], {type: 'text/plain'});
 		var test1a2 = new Blob([test1a2txt], {type: 'text/plain'});
 
-		storage.initialized.then(function() {
+		fromStorage.initialized.then(function() {
 			console.log('Inited');
-			return storage.setContents('test1', test1doc);
+			return fromStorage.setContents('test1', test1doc);
 		}).then(function() {
-			return storage.setContents('test2', test2doc);
+			return fromStorage.setContents('test2', test2doc);
 		}).then(function() {
-			return storage.setAttachment('test1', 'a1', test1a1);
+			return fromStorage.setAttachment('test1', 'a1', test1a1);
 		}).then(function() {
-			return storage.setAttachment('test1', 'a2', test1a2);
+			return fromStorage.setAttachment('test1', 'a2', test1a2);
 		}).then(function() {
-			storage = new lls({
+			toStorage = new lls({
 				name: 'lls-migration-test',
 				forceProvider: availableProviders[1],
 				copyOldData: lls.copyOldData
 			});
-			console.log('Migrating to: ' + availableProviders[1]);
+			console.log('Migrating to: ' + availableProviders[1]
+				+ ' From: ' + availableProviders[0]);
 
-			return storage.initialized.then(function() {
-				return storage.migrated;
+			return toStorage.initialized.then(function() {
+				return toStorage.migrated;
 			});
 		}).then(function() {
-			console.log(arguments);
-			return storage.getContents('test1');
+			return toStorage.getContents('test1');
 		}).then(function(content) {
 			expect(content).to.eql(test1doc);
-			return storage.getContents('test2');
+			return toStorage.getContents('test2');
 		}).then(function(content) {
 			expect(content).to.eql(test2doc);
-			return storage.getAttachment('test1', 'a1');
+			return toStorage.getAttachment('test1', 'a1');
 		}).then(function(attachment) {
+			var deferred = Q.defer();
 			var r = new FileReader();
-			// the least of which is this guy
 			r.addEventListener("loadend", function() {
 				expect(r.result).to.eql(test1a1txt);
+				toStorage.getAttachment('test1', 'a2').then(deferred.resolve, deferred.reject)
 			});
 			r.readAsText(attachment);
-			return storage.getAttachment('test1', 'a2');
+			return deferred.promise;
 		}).then(function(attachment) {
 			var r = new FileReader();
-			// and this guy
 			r.addEventListener("loadend", function() {
 				expect(r.result).to.eql(test1a2txt);
+				fromStorage.clear();
+				toStorage.clear();
+				done();
 			});
 			r.readAsText(attachment);
-			done();
 		}).done();
 	}
 

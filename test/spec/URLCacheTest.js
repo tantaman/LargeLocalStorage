@@ -6,7 +6,7 @@
 
 	var blob = new Blob(['<p>worthless</p>'], {type: 'text/html'});
 
-	var storage = new lls({size: 10 * 1024 * 1024});
+	var storage = new lls({name: 'lls-urlcache-test', size: 10 * 1024 * 1024});
 	LargeLocalStorage.contrib.URLCache.addTo(storage);
 	var cacheObj = storage.pipe.getHandler('URLCache').cache;
 
