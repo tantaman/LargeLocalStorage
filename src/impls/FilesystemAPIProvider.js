@@ -1,3 +1,5 @@
+var requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
+var persistentStorage = navigator.persistentStorage || navigator.webkitPersistentStorage;
 var FilesystemAPIProvider = (function(Q) {
 	function makeErrorHandler(deferred, finalDeferred) {
 		// TODO: normalize the error so
@@ -345,8 +347,6 @@ var FilesystemAPIProvider = (function(Q) {
 	return {
 		init: function(config) {
 			var deferred = Q.defer();
-			window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
-			var persistentStorage = navigator.persistentStorage || navigator.webkitPersistentStorage;
 
 			if (!requestFileSystem) {
 				deferred.reject("No FS API");
@@ -378,6 +378,10 @@ var FilesystemAPIProvider = (function(Q) {
 			});
 
 			return deferred.promise;
+		},
+
+		isAvailable: function() {
+			return requestFileSystem != null;
 		}
 	}
 })(Q);

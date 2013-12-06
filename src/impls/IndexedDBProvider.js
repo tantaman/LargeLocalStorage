@@ -1,3 +1,5 @@
+var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB;
+var IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction;
 var IndexedDBProvider = (function(Q) {
 	var URL = window.URL || window.webkitURL;
 
@@ -301,10 +303,7 @@ var IndexedDBProvider = (function(Q) {
 	return {
 		init: function(config) {
 			var deferred = Q.defer();
-
-			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
-			IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction,
-			dbVersion = 2;
+			var dbVersion = 2;
 
 			if (!indexedDB || !IDBTransaction) {
 				deferred.reject("No IndexedDB");
@@ -353,6 +352,10 @@ var IndexedDBProvider = (function(Q) {
 			};
 
 			return deferred.promise;
+		},
+
+		isAvailable: function() {
+			return indexedDB != null && IDBTransaction != null;
 		}
 	}
 })(Q);

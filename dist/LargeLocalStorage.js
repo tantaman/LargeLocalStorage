@@ -259,6 +259,8 @@ var utils = (function() {
 		})
 	}
 })();
+var requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
+var persistentStorage = navigator.persistentStorage || navigator.webkitPersistentStorage;
 var FilesystemAPIProvider = (function(Q) {
 	function makeErrorHandler(deferred, finalDeferred) {
 		// TODO: normalize the error so
@@ -606,8 +608,6 @@ var FilesystemAPIProvider = (function(Q) {
 	return {
 		init: function(config) {
 			var deferred = Q.defer();
-			window.requestFileSystem = window.requestFileSystem || window.webkitRequestFileSystem;
-			var persistentStorage = navigator.persistentStorage || navigator.webkitPersistentStorage;
 
 			if (!requestFileSystem) {
 				deferred.reject("No FS API");
@@ -639,9 +639,15 @@ var FilesystemAPIProvider = (function(Q) {
 			});
 
 			return deferred.promise;
+		},
+
+		isAvailable: function() {
+			return requestFileSystem != null;
 		}
 	}
 })(Q);
+var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB;
+var IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction;
 var IndexedDBProvider = (function(Q) {
 	var URL = window.URL || window.webkitURL;
 
@@ -945,10 +951,7 @@ var IndexedDBProvider = (function(Q) {
 	return {
 		init: function(config) {
 			var deferred = Q.defer();
-
-			var indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.OIndexedDB || window.msIndexedDB,
-			IDBTransaction = window.IDBTransaction || window.webkitIDBTransaction || window.OIDBTransaction || window.msIDBTransaction,
-			dbVersion = 2;
+			var dbVersion = 2;
 
 			if (!indexedDB || !IDBTransaction) {
 				deferred.reject("No IndexedDB");
@@ -997,6 +1000,10 @@ var IndexedDBProvider = (function(Q) {
 			};
 
 			return deferred.promise;
+		},
+
+		isAvailable: function() {
+			return indexedDB != null && IDBTransaction != null;
 		}
 	}
 })(Q);
@@ -1007,6 +1014,7 @@ var LocalStorageProvider = (function(Q) {
 		}
 	}
 })(Q);
+var openDb = window.openDatabase;
 var WebSQLProvider = (function(Q) {
 	var URL = window.URL || window.webkitURL;
 	var convertToBase64 = utils.convertToBase64;
@@ -1239,7 +1247,6 @@ var WebSQLProvider = (function(Q) {
 
 	return {
 		init: function(config) {
-			var openDb = window.openDatabase;
 			var deferred = Q.defer();
 			if (!openDb) {
 				deferred.reject("No WebSQL");
@@ -1261,6 +1268,10 @@ var WebSQLProvider = (function(Q) {
 			});
 
 			return deferred.promise;
+		},
+
+		isAvailable: function() {
+			return openDb != null;
 		}
 	}
 })(Q);
@@ -1836,7 +1847,14 @@ var LargeLocalStorage = (function(Q) {
 	};
 
 	LargeLocalStorage._sessionMeta = sessionMeta;
-	LargeLocalStorage._providers = providers;
+	
+	var availableProviders = [];
+	Object.keys(providers).forEach(function(potentialProvider) {
+		if (providers[potentialProvider].isAvailable())
+			availableProviders.push(potentialProvider);
+	});
+
+	LargeLocalStorage.availableProviders = availableProviders;
 
 	return LargeLocalStorage;
 })(Q);

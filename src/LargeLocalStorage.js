@@ -570,7 +570,14 @@ var LargeLocalStorage = (function(Q) {
 	};
 
 	LargeLocalStorage._sessionMeta = sessionMeta;
-	LargeLocalStorage._providers = providers;
+	
+	var availableProviders = [];
+	Object.keys(providers).forEach(function(potentialProvider) {
+		if (providers[potentialProvider].isAvailable())
+			availableProviders.push(potentialProvider);
+	});
+
+	LargeLocalStorage.availableProviders = availableProviders;
 
 	return LargeLocalStorage;
 })(Q);

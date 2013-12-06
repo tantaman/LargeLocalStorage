@@ -198,12 +198,11 @@
 
 		describe('Data Migration', function() {
 			it('Allows us to copy data when the implementation changes', function(done) {
-				getAvailableImplementations().then(function(available) {
-					if (available.length >= 2)
-						testDataMigration(done, available);
-					else
-						done();
-				});
+				var available = lls.availableProviders;
+				if (available.length >= 2)
+					testDataMigration(done, available);
+				else
+					done();
 			});
 		});
 	});

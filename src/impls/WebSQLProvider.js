@@ -1,3 +1,4 @@
+var openDb = window.openDatabase;
 var WebSQLProvider = (function(Q) {
 	var URL = window.URL || window.webkitURL;
 	var convertToBase64 = utils.convertToBase64;
@@ -230,7 +231,6 @@ var WebSQLProvider = (function(Q) {
 
 	return {
 		init: function(config) {
-			var openDb = window.openDatabase;
 			var deferred = Q.defer();
 			if (!openDb) {
 				deferred.reject("No WebSQL");
@@ -252,6 +252,10 @@ var WebSQLProvider = (function(Q) {
 			});
 
 			return deferred.promise;
+		},
+
+		isAvailable: function() {
+			return openDb != null;
 		}
 	}
 })(Q);
