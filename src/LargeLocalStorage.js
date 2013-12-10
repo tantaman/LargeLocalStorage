@@ -5,6 +5,10 @@ var LargeLocalStorage = (function(Q) {
 	else
 		sessionMeta = {};
 
+	window.addEventListener('beforeunload', function() {
+		localStorage.setItem('LargeLocalStorage-meta', JSON.stringify(sessionMeta));
+	});
+
 	function defaults(options, defaultOptions) {
 		for (var k in defaultOptions) {
 			if (options[k] === undefined)
@@ -14,24 +18,11 @@ var LargeLocalStorage = (function(Q) {
 		return options;
 	}
 
-	function getImpl(type) {
-		switch(type) {
-			case 'FileSystemAPI':
-				return FilesystemAPIProvider.init();
-			case 'IndexedDB':
-				return IndexedDBProvider.init();
-			case 'WebSQL':
-				return WebSQLProvider.init();
-			case 'LocalStorage':
-				return LocalStorageProvider.init();
-		}
-	}
-
 	var providers = {
 		FileSystemAPI: FilesystemAPIProvider,
 		IndexedDB: IndexedDBProvider,
-		WebSQL: WebSQLProvider,
-		LocalStorage: LocalStorageProvider
+		WebSQL: WebSQLProvider
+		// LocalStorage: LocalStorageProvider
 	}
 
 	var defaultConfig = {
@@ -63,9 +54,33 @@ var LargeLocalStorage = (function(Q) {
 		});
 	}
 
-	function copyOldData(from, to) {
-		// from = getImpl(from);
-		console.log('Underlying implementation change.');
+	function copy(obj) {
+		var result = {};
+		Object.keys(obj).forEach(function(key) {
+			result[key] = obj[key];
+		});
+
+		return result;
+	}
+
+	function handleDataMigration(storageInstance, config, previousProviderType, currentProivderType) {
+		var previousProviderType = 
+			sessionMeta[config.name] && sessionMeta[config.name].lastStorageImpl;
+		if (config.migrate) {
+			if (previousProviderType != currentProivderType
+				&& previousProviderType in providers) {
+				config = copy(config);
+				config.forceProvider = previousProviderType;
+				selectImplementation(config).then(function(prevImpl) {
+					config.migrate(null, prevImpl, storageInstance, config);
+				}, function(e) {
+					config.migrate(e);
+				});
+			} else {
+				if (config.migrationComplete)
+					config.migrationComplete();
+			}
+		}
 	}
 
 	/**
@@ -75,8 +90,8 @@ var LargeLocalStorage = (function(Q) {
 	 * key-value store in the browser.
 	 *
 	 * For storage, LLS uses the [FilesystemAPI](https://developer.mozilla.org/en-US/docs/WebGuide/API/File_System)
-	 * when running in Crome and Opera, 
-	 * [InexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB) in Firefox and IE
+	 * when running in Chrome and Opera, 
+	 * [IndexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB) in Firefox and IE
 	 * and [WebSQL](http://www.w3.org/TR/webdatabase/) in Safari.
 	 *
 	 * When IndexedDB becomes available in Safari, LLS will
@@ -133,6 +148,13 @@ var LargeLocalStorage = (function(Q) {
 	 *		// that is useful for debugging.
 	 *		// force LLS to use a specific storage implementation
 	 *		// forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
+	 *		
+	 *		// These parameters can be used to migrate data from one
+	 *		// storage implementation to another
+	 *		// migrate: LargeLocalStorage.copyOldData,
+	 *		// migrationComplete: function(err) {
+	 *		//   db is initialized and old data has been copied.
+	 *		// }
 	 *	});
 	 *	storage.initialized.then(function(capacity) {
 	 *		if (capacity != -1 && capacity != desiredCapacity) {
@@ -147,22 +169,7 @@ var LargeLocalStorage = (function(Q) {
 	 * @return {LargeLocalStorage}
 	 */
 	function LargeLocalStorage(config) {
-		var self = this;
 		var deferred = Q.defer();
-		selectImplementation(config).then(function(impl) {
-			console.log('Selected: ' + impl.type);
-			self._impl = impl;
-			if (sessionMeta.lastStorageImpl != self._impl.type) {
-				copyOldData(sessionMeta.lastStorageImpl, self._impl);
-			}
-			sessionMeta.lastStorageImpl = impl.type;
-			deferred.resolve(self);
-		}).catch(function(e) {
-			// This should be impossible
-			console.log(e);
-			deferred.reject('No storage provider found');
-		});
-
 		/**
 		* @property {promise} initialized
 		*/
@@ -187,6 +194,20 @@ var LargeLocalStorage = (function(Q) {
 
 		piped.pipe.addLast('lls', this);
 		piped.initialized = this.initialized;
+
+		var self = this;
+		selectImplementation(config).then(function(impl) {
+			self._impl = impl;
+			handleDataMigration(piped, config, self._impl.type);
+			sessionMeta[config.name] = sessionMeta[config.name] || {};
+			sessionMeta[config.name].lastStorageImpl = impl.type;
+			deferred.resolve(piped);
+		}).catch(function(e) {
+			// This should be impossible
+			console.log(e);
+			deferred.reject('No storage provider found');
+		});
+
 		return piped;
 	}
 
@@ -524,6 +545,57 @@ var LargeLocalStorage = (function(Q) {
 	};
 
 	LargeLocalStorage.contrib = {};
+
+	function writeAttachments(docKey, attachments, storage) {
+		var promises = [];
+		attachments.forEach(function(attachment) {
+			promises.push(storage.setAttachment(docKey, attachment.attachKey, attachment.data));
+		});
+
+		return Q.all(promises);
+	}
+
+	function copyDocs(docKeys, oldStorage, newStorage) {
+		var promises = [];
+		docKeys.forEach(function(key) {
+			promises.push(oldStorage.getContents(key).then(function(contents) {
+				return newStorage.setContents(key, contents);
+			}));
+		});
+
+		docKeys.forEach(function(key) {
+			promises.push(oldStorage.getAllAttachments(key).then(function(attachments) {
+				return writeAttachments(key, attachments, newStorage);
+			}));
+		});
+
+		return Q.all(promises);
+	}
+
+	LargeLocalStorage.copyOldData = function(err, oldStorage, newStorage, config) {
+		if (err) {
+			throw err;
+		}
+
+		oldStorage.ls().then(function(docKeys) {
+			return copyDocs(docKeys, oldStorage, newStorage)
+		}).then(function() {
+			if (config.migrationComplete)
+				config.migrationComplete();
+		}, function(e) {
+			config.migrationComplete(e);
+		});
+	};
+
+	LargeLocalStorage._sessionMeta = sessionMeta;
+	
+	var availableProviders = [];
+	Object.keys(providers).forEach(function(potentialProvider) {
+		if (providers[potentialProvider].isAvailable())
+			availableProviders.push(potentialProvider);
+	});
+
+	LargeLocalStorage.availableProviders = availableProviders;
 
 	return LargeLocalStorage;
 })(Q);

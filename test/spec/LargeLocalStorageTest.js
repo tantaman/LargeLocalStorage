@@ -1,4 +1,10 @@
 (function(lls) {
+	Q.longStackSupport = true;
+	Q.onerror = function(err) {
+		console.log(err);
+		throw err;
+	};
+
 	var storage = new lls({
 		size: 10 * 1024 * 1024,
 		name: 'lls-test'
@@ -195,7 +201,105 @@
 				storage.getContents('testfile2').then(scb, ecb);
 			}).done();
 		});
+
+		describe('Data Migration', function() {
+			it('Allows us to copy data when the implementation changes', function(done) {
+				var available = lls.availableProviders;
+				if (available.length >= 2)
+					testDataMigration(done, available);
+				else
+					done();
+			});
+		});
 	});
+
+	function testDataMigration(done, availableProviders) {
+		var fromStorage = new lls({
+			name: 'lls-migration-test',
+			forceProvider: availableProviders[0]
+		});
+
+		var toStorage;
+
+		var test1doc = 'Allo Allo';
+		var test2doc = 'Ello Ello';
+		var test1a1txt = '123asd';
+		var test1a2txt = 'sdfsdfsdf';
+		var test1a1 = new Blob([test1a1txt], {type: 'text/plain'});
+		var test1a2 = new Blob([test1a2txt], {type: 'text/plain'});
+
+		fromStorage.initialized.then(function() {
+			return fromStorage.setContents('test1', test1doc);
+		}).then(function() {
+			return fromStorage.setContents('test2', test2doc);
+		}).then(function() {
+			return fromStorage.setAttachment('test1', 'a1', test1a1);
+		}).then(function() {
+			return fromStorage.setAttachment('test1', 'a2', test1a2);
+		}).then(function() {
+			var deferred = Q.defer();
+			toStorage = new lls({
+				name: 'lls-migration-test',
+				forceProvider: availableProviders[1],
+				migrate: lls.copyOldData,
+				migrationComplete: function(err) {
+					deferred.resolve();
+				}
+			});
+			console.log('Migrating to: ' + availableProviders[1]
+				+ ' From: ' + availableProviders[0]);
+
+			return deferred.promise;
+		}).then(function() {
+			return toStorage.getContents('test1');
+		}).then(function(content) {
+			expect(content).to.eql(test1doc);
+			return toStorage.getContents('test2');
+		}).then(function(content) {
+			expect(content).to.eql(test2doc);
+			return toStorage.getAttachment('test1', 'a1');
+		}).then(function(attachment) {
+			var deferred = Q.defer();
+			var r = new FileReader();
+			r.addEventListener("loadend", function() {
+				expect(r.result).to.eql(test1a1txt);
+				toStorage.getAttachment('test1', 'a2').then(deferred.resolve, deferred.reject)
+			});
+			r.readAsText(attachment);
+			return deferred.promise;
+		}).then(function(attachment) {
+			var r = new FileReader();
+			r.addEventListener("loadend", function() {
+				console.log(r.result);
+				expect(r.result).to.eql(test1a2txt);
+				Q.all([fromStorage.clear(), toStorage.clear()]).done(function() {done();});
+			});
+			console.log('Attach: ' + attachment);
+			r.readAsText(attachment);
+		}).done();
+	}
+
+	function getAvailableImplementations() {
+		var deferred = Q.defer();
+		var available = [];
+
+		var potentialProviders = Object.keys(lls._providers);
+
+		var latch = countdown(potentialProviders.length, function() {
+			deferred.resolve(available);
+		});
+
+		potentialProviders.forEach(function(potentialProvider) {
+			lls._providers[potentialProvider].init({name: 'lls-test-avail'}).then(function() {
+				available.push(potentialProvider);
+				latch();
+			}, function() {
+				latch();
+			})
+		});
+
+		return deferred.promise;
+	}
 
 
 	storage.initialized.then(function() {
