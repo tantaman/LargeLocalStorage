@@ -1,4 +1,10 @@
 (function(lls) {
+	Q.longStackSupport = true;
+	Q.onerror = function(err) {
+		console.log(err);
+		throw err;
+	};
+
 	var storage = new lls({
 		size: 10 * 1024 * 1024,
 		name: 'lls-test'
@@ -207,7 +213,6 @@
 		});
 	});
 
-// TODO: there are a huge number of problems with this test.
 	function testDataMigration(done, availableProviders) {
 		var fromStorage = new lls({
 			name: 'lls-migration-test',
@@ -224,7 +229,6 @@
 		var test1a2 = new Blob([test1a2txt], {type: 'text/plain'});
 
 		fromStorage.initialized.then(function() {
-			console.log('Inited');
 			return fromStorage.setContents('test1', test1doc);
 		}).then(function() {
 			return fromStorage.setContents('test2', test2doc);
@@ -233,17 +237,19 @@
 		}).then(function() {
 			return fromStorage.setAttachment('test1', 'a2', test1a2);
 		}).then(function() {
+			var deferred = Q.defer();
 			toStorage = new lls({
 				name: 'lls-migration-test',
 				forceProvider: availableProviders[1],
-				copyOldData: lls.copyOldData
+				migrate: lls.copyOldData,
+				migrationComplete: function(err) {
+					deferred.resolve();
+				}
 			});
 			console.log('Migrating to: ' + availableProviders[1]
 				+ ' From: ' + availableProviders[0]);
 
-			return toStorage.initialized.then(function() {
-				return toStorage.migrated;
-			});
+			return deferred.promise;
 		}).then(function() {
 			return toStorage.getContents('test1');
 		}).then(function(content) {
@@ -264,11 +270,11 @@
 		}).then(function(attachment) {
 			var r = new FileReader();
 			r.addEventListener("loadend", function() {
+				console.log(r.result);
 				expect(r.result).to.eql(test1a2txt);
-				fromStorage.clear();
-				toStorage.clear();
-				done();
+				Q.all([fromStorage.clear(), toStorage.clear()]).done(function() {done();});
 			});
+			console.log('Attach: ' + attachment);
 			r.readAsText(attachment);
 		}).done();
 	}

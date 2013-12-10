@@ -60,14 +60,13 @@ var LargeLocalStorage = (function(Q) {
 	}
 
 	function handleDataMigration(storageInstance, config, previousProviderType) {
-		if (config.copyOldData) {
-			storageInstance.migrated = Q.defer();
+		if (config.migrate) {
 			config = copy(config);
 			config.forceProvider = previousProviderType;
 			selectImplementation(config).then(function(prevImpl) {
-				config.copyOldData(null, prevImpl, storageInstance);
+				config.migrate(null, prevImpl, storageInstance, config);
 			}, function(e) {
-				config.copyOldData(e);
+				config.migrate(e);
 			});
 		}
 	}
@@ -536,36 +535,38 @@ var LargeLocalStorage = (function(Q) {
 			promises.push(storage.setAttachment(docKey, attachment.attachKey, attachment.data));
 		});
 
-		return promises;
+		return Q.all(promises);
 	}
 
 	function copyDocs(docKeys, oldStorage, newStorage) {
 		var promises = [];
 		docKeys.forEach(function(key) {
-			oldStorage.getContents(key).then(function(contents) {
-				promises.push(newStorage.setContents(key, contents));
-			}).done();
+			promises.push(oldStorage.getContents(key).then(function(contents) {
+				return newStorage.setContents(key, contents);
+			}));
 		});
 
 		docKeys.forEach(function(key) {
-			oldStorage.getAllAttachments(key).then(function(attachments) {
-				promises = promises.concat(
-					writeAttachments(key, attachments, newStorage));
-			}).done();
+			promises.push(oldStorage.getAllAttachments(key).then(function(attachments) {
+				return writeAttachments(key, attachments, newStorage);
+			}));
 		});
 
-		return promises;
+		return Q.all(promises);
 	}
 
-	LargeLocalStorage.copyOldData = function(err, oldStorage, newStorage) {
+	LargeLocalStorage.copyOldData = function(err, oldStorage, newStorage, config) {
 		if (err) {
 			throw err;
 		}
 
 		oldStorage.ls().then(function(docKeys) {
 			return copyDocs(docKeys, oldStorage, newStorage)
-		}).then(function(promises) {
-			Q.all(promises).then(storage.migrated.resolve, storage.migrated.reject);
+		}).then(function() {
+			if (config.migrationComplete)
+				config.migrationComplete();
+		}, function(e) {
+			config.migrationComplete(e);
 		});
 	};
 

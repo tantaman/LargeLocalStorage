@@ -24,8 +24,11 @@
 		function(done) {
 			storage.setAttachment('doc', 'attach', blob)
 			.then(function() {
+				console.log('Getting attach url');
 				return storage.getAttachmentURL('doc', 'attach');
-			}).then(function(url) {
+			})
+			.then(function(url) {
+				console.log('Comparison');
 				expect(url).to.equal(cacheObj.main.doc.attach);
 				expect(cacheObj.reverse[url]).to.eql({
 					docKey: 'doc',

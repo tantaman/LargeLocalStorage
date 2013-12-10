@@ -171,7 +171,6 @@ var FilesystemAPIProvider = (function(Q) {
 						if (!failed)
 							deferred.resolve();
 					});
-					console.log(entries);
 
 					entries.forEach(function(entry) {
 						if (entry.isDirectory) {
