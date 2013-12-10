@@ -5,6 +5,10 @@ var LargeLocalStorage = (function(Q) {
 	else
 		sessionMeta = {};
 
+	window.addEventListener('beforeunload', function() {
+		localStorage.setItem('LargeLocalStorage-meta', JSON.stringify(sessionMeta));
+	});
+
 	function defaults(options, defaultOptions) {
 		for (var k in defaultOptions) {
 			if (options[k] === undefined)
@@ -59,15 +63,23 @@ var LargeLocalStorage = (function(Q) {
 		return result;
 	}
 
-	function handleDataMigration(storageInstance, config, previousProviderType) {
+	function handleDataMigration(storageInstance, config, previousProviderType, currentProivderType) {
+		var previousProviderType = 
+			sessionMeta[config.name] && sessionMeta[config.name].lastStorageImpl;
 		if (config.migrate) {
-			config = copy(config);
-			config.forceProvider = previousProviderType;
-			selectImplementation(config).then(function(prevImpl) {
-				config.migrate(null, prevImpl, storageInstance, config);
-			}, function(e) {
-				config.migrate(e);
-			});
+			if (previousProviderType != currentProivderType
+				&& previousProviderType in providers) {
+				config = copy(config);
+				config.forceProvider = previousProviderType;
+				selectImplementation(config).then(function(prevImpl) {
+					config.migrate(null, prevImpl, storageInstance, config);
+				}, function(e) {
+					config.migrate(e);
+				});
+			} else {
+				if (config.migrationComplete)
+					config.migrationComplete();
+			}
 		}
 	}
 
@@ -136,6 +148,13 @@ var LargeLocalStorage = (function(Q) {
 	 *		// that is useful for debugging.
 	 *		// force LLS to use a specific storage implementation
 	 *		// forceProvider: 'IndexedDB' or 'WebSQL' or 'FilesystemAPI'
+	 *		
+	 *		// These parameters can be used to migrate data from one
+	 *		// storage implementation to another
+	 *		// migrate: LargeLocalStorage.copyOldData,
+	 *		// migrationComplete: function(err) {
+	 *		//   db is initialized and old data has been copied.
+	 *		// }
 	 *	});
 	 *	storage.initialized.then(function(capacity) {
 	 *		if (capacity != -1 && capacity != desiredCapacity) {
@@ -179,11 +198,9 @@ var LargeLocalStorage = (function(Q) {
 		var self = this;
 		selectImplementation(config).then(function(impl) {
 			self._impl = impl;
-			if (sessionMeta.lastStorageImpl != self._impl.type 
-				&& sessionMeta.lastStorageImpl in providers) {
-				handleDataMigration(piped, config, sessionMeta.lastStorageImpl);
-			}
-			sessionMeta.lastStorageImpl = impl.type;
+			handleDataMigration(piped, config, self._impl.type);
+			sessionMeta[config.name] = sessionMeta[config.name] || {};
+			sessionMeta[config.name].lastStorageImpl = impl.type;
 			deferred.resolve(piped);
 		}).catch(function(e) {
 			// This should be impossible
