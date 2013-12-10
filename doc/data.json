@@ -6,8 +6,8 @@
         "url": ""
     },
     "files": {
-        "src/LargeLocalStorage.js": {
-            "name": "src/LargeLocalStorage.js",
+        "src\\LargeLocalStorage.js": {
+            "name": "src\\LargeLocalStorage.js",
             "modules": {},
             "classes": {
                 "LargeLocalStorage": 1
@@ -15,8 +15,8 @@
             "fors": {},
             "namespaces": {}
         },
-        "src/pipeline.js": {
-            "name": "src/pipeline.js",
+        "src\\pipeline.js": {
+            "name": "src\\pipeline.js",
             "modules": {},
             "classes": {},
             "fors": {},
@@ -33,7 +33,7 @@
             "extensions": [],
             "plugin_for": [],
             "extension_for": [],
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 71,
             "description": "LargeLocalStorage (or LLS) gives you a large capacity \n (up to several gig with permission from the user)\n key-value store in the browser.\n\n For storage, LLS uses the [FilesystemAPI](https://developer.mozilla.org/en-US/docs/WebGuide/API/File_System)\n when running in Crome and Opera, \n [InexedDB](https://developer.mozilla.org/en-US/docs/IndexedDB) in Firefox and IE\n and [WebSQL](http://www.w3.org/TR/webdatabase/) in Safari.\n\n When IndexedDB becomes available in Safari, LLS will\n update to take advantage of that storage implementation.\n\n\n Upon construction a LargeLocalStorage (LLS) object will be \n immediately returned but not necessarily immediately ready for use.\n\n A LLS object has an `initialized` property which is a promise\n that is resolved when the LLS object is ready for us.\n\n Usage of LLS would typically be:\n ```\n var storage = new LargeLocalStorage({size: 75*1024*1024});\n storage.initialized.then(function(grantedCapacity) {\n   // storage ready to be used.\n });\n ```\n\n The reason that LLS may not be immediately ready for\n use is that some browsers require confirmation from the\n user before a storage area may be created.  Also,\n the browser's native storage APIs are asynchronous.\n\n If an LLS instance is used before the storage\n area is ready then any\n calls to it will throw an exception with code: \"NO_IMPLEMENTATION\"\n\n This behavior is useful when you want the application\n to continue to function--regardless of whether or\n not the user has allowed it to store data--and would\n like to know when your storage calls fail at the point\n of those calls.\n\n LLS-contrib has utilities to queue storage calls until\n the implementation is ready.  If an implementation\n is never ready this could obviously lead to memory issues\n which is why it is not the default behavior.",
             "example": [
@@ -55,7 +55,7 @@
     },
     "classitems": [
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 166,
             "itemtype": "property",
             "name": "initialized",
@@ -63,7 +63,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 194,
             "description": "Whether or not LLS is ready to store data.\nThe `initialized` property can be used to\nawait initialization.",
             "example": [
@@ -74,7 +74,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 212,
             "description": "List all attachments under a given key.\n\nList all documents if no key is provided.\n\nReturns a promise that is fulfilled with\nthe listing.",
             "example": [
@@ -97,7 +97,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 234,
             "description": "Remove the specified document and all\nof its attachments.\n\nReturns a promise that is fulfilled when the\nremoval completes.\n\nIf no docKey is specified, this throws an error.\n\nTo remove all files in LargeLocalStorage call\n`lls.clear();`\n\nTo remove all attachments that were written without\na docKey, call `lls.rm('__emptydoc__');`\n\nrm works this way to ensure you don't lose\ndata due to an accidently undefined variable.",
             "example": [
@@ -119,7 +119,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 266,
             "description": "An explicit way to remove all documents and\nattachments from LargeLocalStorage.",
             "example": [
@@ -132,7 +132,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 282,
             "description": "Get the contents of a document identified by `docKey`\nTODO: normalize all implementations to allow storage\nand retrieval of JS objects?",
             "example": [
@@ -154,7 +154,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 301,
             "description": "Set the contents identified by `docKey` to `data`.\nThe document will be created if it does not exist.",
             "example": [
@@ -181,7 +181,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 320,
             "description": "Get the attachment identified by `docKey` and `attachKey`",
             "example": [
@@ -209,7 +209,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 343,
             "description": "Set an attachment for a given document.  Identified\nby `docKey` and `attachKey`.",
             "example": [
@@ -242,7 +242,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 365,
             "description": "Get the URL for a given attachment.",
             "example": [
@@ -270,7 +270,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 391,
             "description": "Gets all of the attachments for a document.",
             "example": [
@@ -293,7 +293,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 418,
             "description": "Gets all attachments URLs for a document.",
             "example": [
@@ -316,7 +316,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 440,
             "description": "Revoke the attachment URL as required by the underlying\nstorage system.\n\nThis is akin to `URL.revokeObjectURL(url)`\nURLs that come from `getAttachmentURL` or `getAllAttachmentURLs` \nshould be revoked by LLS and not `URL.revokeObjectURL`",
             "example": [
@@ -338,7 +338,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 463,
             "description": "Remove an attachment from a document.",
             "example": [
@@ -365,7 +365,7 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/LargeLocalStorage.js",
+            "file": "src\\LargeLocalStorage.js",
             "line": 484,
             "description": "Returns the actual capacity of the storage or -1\nif it is unknown.  If the user denies your request for\nstorage you'll get back some smaller amount of storage than what you\nactually requested.\n\nTODO: return an estimated capacity if actual capacity is unknown?\n-Firefox is 50MB until authorized to go above,\n-Chrome is some % of available disk space,\n-Safari unlimited as long as the user keeps authorizing size increases\n-Opera same as safari?",
             "example": [
@@ -380,25 +380,25 @@
             "class": "LargeLocalStorage"
         },
         {
-            "file": "src/pipeline.js",
+            "file": "src\\pipeline.js",
             "line": 2,
             "author": "Matt Crinklaw-Vogt",
             "class": ""
         },
         {
-            "file": "src/pipeline.js",
+            "file": "src\\pipeline.js",
             "line": 67,
             "description": "Add the handler with the given name after the \nhandler specified by target.  Target can be a handler\nname or a handler instance.",
             "class": ""
         },
         {
-            "file": "src/pipeline.js",
+            "file": "src\\pipeline.js",
             "line": 83,
             "description": "Add the handler with the given name after the handler\nspecified by target.  Target can be a handler name or\na handler instance.",
             "class": ""
         },
         {
-            "file": "src/pipeline.js",
+            "file": "src\\pipeline.js",
             "line": 99,
             "description": "Replace the handler specified by target.",
             "class": ""
@@ -407,75 +407,75 @@
     "warnings": [
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:212"
+            "line": " src\\LargeLocalStorage.js:212"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:234"
+            "line": " src\\LargeLocalStorage.js:234"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:266"
+            "line": " src\\LargeLocalStorage.js:266"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:282"
+            "line": " src\\LargeLocalStorage.js:282"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:301"
+            "line": " src\\LargeLocalStorage.js:301"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:320"
+            "line": " src\\LargeLocalStorage.js:320"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:343"
+            "line": " src\\LargeLocalStorage.js:343"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:365"
+            "line": " src\\LargeLocalStorage.js:365"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:391"
+            "line": " src\\LargeLocalStorage.js:391"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:418"
+            "line": " src\\LargeLocalStorage.js:418"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:440"
+            "line": " src\\LargeLocalStorage.js:440"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:463"
+            "line": " src\\LargeLocalStorage.js:463"
         },
         {
             "message": "replacing incorrect tag: returns with return",
-            "line": " src/LargeLocalStorage.js:484"
+            "line": " src\\LargeLocalStorage.js:484"
         },
         {
             "message": "Missing item type\nAn explicit way to remove all documents and\nattachments from LargeLocalStorage.",
-            "line": " src/LargeLocalStorage.js:266"
+            "line": " src\\LargeLocalStorage.js:266"
         },
         {
             "message": "Missing item type",
-            "line": " src/pipeline.js:2"
+            "line": " src\\pipeline.js:2"
         },
         {
             "message": "Missing item type\nAdd the handler with the given name after the \nhandler specified by target.  Target can be a handler\nname or a handler instance.",
-            "line": " src/pipeline.js:67"
+            "line": " src\\pipeline.js:67"
         },
         {
             "message": "Missing item type\nAdd the handler with the given name after the handler\nspecified by target.  Target can be a handler name or\na handler instance.",
-            "line": " src/pipeline.js:83"
+            "line": " src\\pipeline.js:83"
         },
         {
             "message": "Missing item type\nReplace the handler specified by target.",
-            "line": " src/pipeline.js:99"
+            "line": " src\\pipeline.js:99"
         }
     ]
 }
